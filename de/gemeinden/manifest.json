@@ -1,0 +1,122 @@
+{
+ "grundlage": "de",
+ "ebene": "gemeinden",
+ "stand": "01.01.2026",
+ "vermerk": "© BKG (2026) dl-de/by-2-0",
+ "lizenz": "Datenlizenz Deutschland – Namensnennung – Version 2.0",
+ "lizenz_url": "https://www.govdata.de/dl-de/by-2-0",
+ "files": {
+  "10": {
+   "name": "Saarland",
+   "file": "10.topo.json",
+   "bytes": 34773,
+   "sha256": "b65fe006535a5ca139852931e0fb60dfd1d6ca53836455e0735095aaf7ef13ff",
+   "count": 52
+  },
+  "11": {
+   "name": "Berlin",
+   "file": "11.topo.json",
+   "bytes": 4723,
+   "sha256": "1f14f62c29af35e65fc6ed8a937927ae458b3154ef5ecaf7c0748e7696a5c243",
+   "count": 1
+  },
+  "12": {
+   "name": "Brandenburg",
+   "file": "12.topo.json",
+   "bytes": 263616,
+   "sha256": "41fbfcfa6f96fb4f5f98346fc3651cc7562dc09845bcc1e002d884cca0ac2cbe",
+   "count": 413
+  },
+  "13": {
+   "name": "Mecklenburg-Vorpommern",
+   "file": "13.topo.json",
+   "bytes": 383542,
+   "sha256": "c1c0dad21b4bda00880b3d910d3af8455534bcd531683668d605a898f9a96cdd",
+   "count": 724
+  },
+  "14": {
+   "name": "Sachsen",
+   "file": "14.topo.json",
+   "bytes": 249251,
+   "sha256": "bad57dd9ff0b83b369fa422fd58cc307149eebd2549a6001d9a005287b5f036c",
+   "count": 418
+  },
+  "15": {
+   "name": "Sachsen-Anhalt",
+   "file": "15.topo.json",
+   "bytes": 162537,
+   "sha256": "f0585a004eac659348e42e0200e3665d1eff72168322c4a47c6b2a088d937802",
+   "count": 218
+  },
+  "16": {
+   "name": "Thüringen",
+   "file": "16.topo.json",
+   "bytes": 309806,
+   "sha256": "12e4ff9051e14700a6e2c16f1a98520765b37b76c42ba85e5d23507b0d19ab49",
+   "count": 601
+  },
+  "01": {
+   "name": "Schleswig-Holstein",
+   "file": "01.topo.json",
+   "bytes": 470808,
+   "sha256": "e509dbc8dfdc60791fe007d2fe527515064025b948496af2e368b166156bd6ba",
+   "count": 1104
+  },
+  "02": {
+   "name": "Hamburg",
+   "file": "02.topo.json",
+   "bytes": 5493,
+   "sha256": "a42b94b4cf720114e08f3709510f5ae0687c194ac15c840b735c633f0d82371e",
+   "count": 1
+  },
+  "03": {
+   "name": "Niedersachsen",
+   "file": "03.topo.json",
+   "bytes": 544565,
+   "sha256": "8b375e903c56cbfa611b72729b5292fc67fc956583967d862b6294424aebf727",
+   "count": 964
+  },
+  "04": {
+   "name": "Bremen",
+   "file": "04.topo.json",
+   "bytes": 4746,
+   "sha256": "26d4fc668529ec2e188bef39a443874d1ac14ed080573c061b105944e4c1fa5f",
+   "count": 2
+  },
+  "05": {
+   "name": "Nordrhein-Westfalen",
+   "file": "05.topo.json",
+   "bytes": 273689,
+   "sha256": "94adeb82fbb9abefda33e76a369f48a7dcfeb27e976e59be905010fe2700bb61",
+   "count": 396
+  },
+  "06": {
+   "name": "Hessen",
+   "file": "06.topo.json",
+   "bytes": 267503,
+   "sha256": "ccc5adfb60ab346e25a6ae8fe28786c71aa7817ae4573debdc1f6f1eb02c5634",
+   "count": 425
+  },
+  "07": {
+   "name": "Rheinland-Pfalz",
+   "file": "07.topo.json",
+   "bytes": 908107,
+   "sha256": "bcabd2240ec99a0ce9675fe5a085e813027ca404bdaaf0f7c36a44a82f33b757",
+   "count": 2300
+  },
+  "08": {
+   "name": "Baden-Württemberg",
+   "file": "08.topo.json",
+   "bytes": 615005,
+   "sha256": "374a66fb7fe3e4056e378c5346c8356d4e5a833e95e75f1283b19570c36642ab",
+   "count": 1103
+  },
+  "09": {
+   "name": "Bayern",
+   "file": "09.topo.json",
+   "bytes": 1235060,
+   "sha256": "1fe3c96a3d66b1d5a50d741bc88ded71c201888e419c1c335755d8100b9d134a",
+   "count": 2217
+  }
+ }
+}

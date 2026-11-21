@@ -35,9 +35,14 @@ $svg = Render::svg(Repo::map(3));                                               
     <li><code>&lt;figure class="gk"&gt;</code> mit <code>&lt;svg role="group" aria-labelledby&gt;</code> und <code>&lt;title&gt;</code>; Gebiete mit Link als
       <code>&lt;a class="gk-area" aria-label&gt;</code>, beim Info-Fenster mit Sprungziel <code>#…-r{id}</code> in der Liste (ohne JavaScript nutzbar), sonst
       <code>&lt;g&gt;</code>. Darunter <code>&lt;ul class="gk-list"&gt;</code> (sichtbar oder <code>gk-sr</code>) und <code>&lt;p class="gk-src"&gt;</code> mit dem Quellenvermerk.</li>
-    <li>Keine <code>style</code>-Attribute: Farben als Klassen <code>gk-c-accent|accent-soft|accent-deep|surface|muted|p1…p8</code> (Variable <code>--gk-c</code>),
+    <li>Keine <code>style</code>-Attribute: Farben als Klassen <code>gk-c-accent|accent-soft|accent-deep|surface|muted|p1…p12</code> (Variable <code>--gk-c</code>),
       eigene Farben hell als SVG-Darstellungsattribut <code>fill</code> plus Klasse <code>gk-c-own gk-x-{hell}-{dunkel}</code>. Alle Farben aus dem Kit-Vertrag (<code>--kit-*</code>) mit Rückfall; eigene
       Variablen <code>--gk-bg, --gk-ink, --gk-muted, --gk-edge, --gk-rest, --gk-focus, --gk-dim</code> – Kits steuern über sie nach.</li>
+    <li><b>Automatische Farben</b> (seit 0.2.1): <code>Colors::assign($regions, $geo['neighbors'])</code> – Palette <code>Colors::AUTO</code> ohne Grau
+      (<code>p8</code> nur von Hand), Nachbarn aus gemeinsamen Bögen der Topologie (<code>Render::neighbors()</code>, im Zwischenspeicher der Geometrie)
+      bekommen verschiedene Farben (gierige Graphfärbung: Position, dann seltenste freie Farbe); ohne Konflikt gilt weiter Position 1 → <code>p1</code>.
+      Hell mischt das CSS mit <code>--kit-bg</code> (Anteil <code>Colors::MIX</code>, sonst 78 %), im Dunkeln setzt die erzeugte Datei
+      <code>farben-….css</code> je benutzter Palettenfarbe <code>--gk-c</code> auf <code>Colors::paletteDark()</code> (Beschriftung ≥ 4,5:1).</li>
     <li><b>Eigene Farben im Dunkeln</b> (Spalte <code>color_dark</code>, Bindung <code>color_dark</code>): Wert aus dem Feld oder <code>Colors::dark()</code> –
       78 % mit dem Dunkel-Hintergrund gemischt, dann mit <code>Core\Design::readable()</code> Richtung Hintergrund, bis die Schriftfarbe im Dunkeln
       (<code>--kit-ink</code>) darauf 4,5:1 erreicht. Die Dunkel-Regel steht in einer erzeugten Datei im Medienordner der Website

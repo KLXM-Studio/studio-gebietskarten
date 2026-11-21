@@ -62,7 +62,8 @@ html.adm-ui[data-theme="dark"] .gk-u.is-free, html.adm-ui[data-theme="dark"] .gk
 .gk-prev-switch { display: flex; gap: .3rem; }
 .gk-prevbox { padding: 1.25rem; border-radius: 10px; border: 1px solid var(--adm-line); margin-top: .5rem; }
 .gk-prevbox .gk-src a, .gk-prevbox .gk-item a { color: var(--kit-accent); }
-/* Vorschau „Dunkel“: eigene Farben mit ihrem Dunkel-Wert (Render setzt --gk-d nur in der Verwaltung) */
+/* Vorschau „Dunkel“: eigene Farben und Palette mit ihrem Dunkel-Wert (Render setzt --gk-d nur in der Verwaltung) */
 .gk-prevbox[data-scheme="dark"] .gk-c-own[style] path, .gk-prevbox[data-scheme="dark"] svg.gk-c-own[style] rect { fill: var(--gk-d); }
+.gk-prevbox[data-scheme="dark"] .gk-area[style]:not(.gk-c-own), .gk-prevbox[data-scheme="dark"] .gk-swatch[style]:not(.gk-c-own) { --gk-c: var(--gk-d); }
 .gk-adm-packs td:first-child { width: 2rem; }
 .gk-adm-src { font-weight: 600; }

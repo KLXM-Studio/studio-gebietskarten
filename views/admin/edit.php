@@ -20,8 +20,8 @@ $editable = $own || ($table && $assignReason === null);
 $noun = Bases::unitNoun($map['base'], $map['level']);
 $nouns = Bases::unitNoun($map['base'], $map['level'], true);
 $adm = G::ADMIN . '/' . $map['id'];
-$index = array_flip(array_column($regions, 'key'));
-$color = fn(array $r): string => Colors::approx(Colors::effective($r['color'], $index[$r['key']]), $kitLight);
+$effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
+$color = fn(array $r): string => Colors::approx($effs[(string) $r['key']], $kitLight);
 $byKey = array_column($regions, null, 'key');
 $free = array_values(array_filter($regions, fn($r) => !isset($locked[(int) $r['id']])));
 $pick = $editRegion && isset($byKey[($own ? 'r' : 'e') . $editRegion]) && !isset($locked[$editRegion]) ? $editRegion : 0;
@@ -168,8 +168,8 @@ $editorData = [
         'color_dark' => $isOwn && $reg['color_dark'] !== '' ? strtoupper($reg['color_dark']) : '', 'link' => $reg['link'],
         'text' => $reg['text'], 'media_id' => $reg['media_id'], 'contact' => $reg['contact'], 'units' => implode(', ', $reg['units'])];
     // Kontrast der Beschriftung (Namen in der Karte) auf der Fläche – hell und im Dunkeln
-    $effL = Colors::approx(Colors::effective($reg['color'], $index[$reg['key']]), $kitLight);
-    $effD = $isOwn ? Colors::darkOf($reg['color'], $reg['color_dark'], $kitDark) : Colors::approx(Colors::effective($reg['color'], $index[$reg['key']]), $kitDark);
+    $effL = Colors::approx($effs[(string) $reg['key']], $kitLight);
+    $effD = Colors::approxDark($effs[(string) $reg['key']], (string) $reg['color_dark'], $kitDark);
     $cL = Colors::labelContrast($effL, $kitLight);
     $cD = Colors::labelContrast($effD, $kitDark);
     $ratio = fn(float $c): string => fmt()->number($c, 1) . ':1';

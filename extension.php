@@ -28,7 +28,7 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.2.0',
+    'version' => '0.2.1',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',

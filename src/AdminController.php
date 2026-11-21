@@ -163,7 +163,8 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         $regions = Repo::regions($m['id']);
         $kit = Preview::kit(false);
         $colors = [];
-        foreach ($regions as $i => $reg) $colors[(string) $reg['id']] = Colors::approx(Colors::effective($reg['color'], $i), $kit);
+        $effs = Colors::assign($regions, (array) (Render::geometry($m, $regions)['neighbors'] ?? []));
+        foreach ($regions as $reg) $colors[(string) $reg['id']] = Colors::approx($effs[$reg['key']], $kit);
         return Response::json(['ok' => true, 'order' => array_map(fn($x) => $x['id'], $regions), 'colors' => (object) $colors,
             'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);
     }

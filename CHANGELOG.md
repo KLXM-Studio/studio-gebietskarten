@@ -1,5 +1,16 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.2.1 (2026-11-21)
+
+- **Automatische Farben ohne Grau, Nachbarn verschieden:** Die automatische Palette vergibt kein Grau mehr (sah aus wie „nicht zugeordnet“;
+  von Hand weiter wählbar) und ist um Indigo, Weinrot, Oliv und Grasgrün erweitert (`p9`–`p12`, elf automatische Farben). Gebiete mit
+  gemeinsamer Grenze bekommen verschiedene Farben (Graphfärbung über die Bögen der verschmolzenen Gebiete, `Colors::assign()`,
+  `Render::neighbors()`); wiederholt wird erst, wenn alle Farben vergeben sind. Bis sieben Gebiete bleiben die Farben wie bisher.
+- **Palette lesbar hell und dunkel:** Blau, Indigo und Weinrot hell stärker aufgehellt; im Dunkeln setzt die erzeugte Datei `farben-….css`
+  je Palettenfarbe einen Wert, auf dem die Beschriftung mindestens 4,5:1 erreicht (bisher nur bei eigenen Farben). Die Vorschau „Dunkel“
+  der Verwaltung und die Kontrastanzeige im Formular zeigen dieselben Werte.
+- Selbsttest erweitert (Palette, Nachbarn bei 11 und 16 Gebieten, Kontrast, Dunkel-Regeln).
+
 ## 0.2.0 (2026-11-21)
 
 - **Zuordnung per Klick auch bei Karten aus einer Datentabelle:** Klick auf die Fläche bzw. die Liste (Tastatur) schreibt das Feld mit den

@@ -31,7 +31,8 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
 }
 .gk-labels text.is-active { font-weight: 800; }
 
-/* Farben: Design (Kit-Vertrag) und Palette (Okabe-Ito, mit dem Hintergrund gemischt – hell wie dunkel ruhig) */
+/* Farben: Design (Kit-Vertrag) und Palette (Okabe-Ito + Indigo, Weinrot, Oliv, Grasgrün; mit dem Hintergrund gemischt –
+   hell wie dunkel ruhig). Im Dunkeln setzt die erzeugte Datei farben-….css lesbare Werte (Beschriftung ≥ 4,5:1). */
 .gk-c-accent { --gk-c: var(--kit-accent, #2f6f8f); }
 .gk-c-accent-soft { --gk-c: color-mix(in oklab, var(--kit-accent, #2f6f8f) 45%, var(--kit-bg, Canvas)); }
 .gk-c-accent-deep { --gk-c: color-mix(in oklab, var(--kit-accent, #2f6f8f) 70%, var(--kit-ink, CanvasText)); }
@@ -41,10 +42,14 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
 .gk-c-p2 { --gk-c: color-mix(in oklab, #56b4e9 78%, var(--kit-bg, Canvas)); }
 .gk-c-p3 { --gk-c: color-mix(in oklab, #009e73 78%, var(--kit-bg, Canvas)); }
 .gk-c-p4 { --gk-c: color-mix(in oklab, #f0e442 78%, var(--kit-bg, Canvas)); }
-.gk-c-p5 { --gk-c: color-mix(in oklab, #0072b2 78%, var(--kit-bg, Canvas)); }
+.gk-c-p5 { --gk-c: color-mix(in oklab, #0072b2 68%, var(--kit-bg, Canvas)); }
 .gk-c-p6 { --gk-c: color-mix(in oklab, #d55e00 78%, var(--kit-bg, Canvas)); }
 .gk-c-p7 { --gk-c: color-mix(in oklab, #cc79a7 78%, var(--kit-bg, Canvas)); }
 .gk-c-p8 { --gk-c: color-mix(in oklab, #999999 78%, var(--kit-bg, Canvas)); }
+.gk-c-p9 { --gk-c: color-mix(in oklab, #332288 50%, var(--kit-bg, Canvas)); }
+.gk-c-p10 { --gk-c: color-mix(in oklab, #882255 55%, var(--kit-bg, Canvas)); }
+.gk-c-p11 { --gk-c: color-mix(in oklab, #999933 78%, var(--kit-bg, Canvas)); }
+.gk-c-p12 { --gk-c: color-mix(in oklab, #66aa33 78%, var(--kit-bg, Canvas)); }
 
 /* Liste der Gebiete (Legende, Alternative zur Karte) */
 .gk-cap { margin: 0; }

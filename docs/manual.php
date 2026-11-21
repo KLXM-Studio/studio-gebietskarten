@@ -31,6 +31,10 @@
   <p><b>Reihenfolge der Gebiete:</b> Ziehen Sie ein Gebiet in der Liste rechts am Griff an eine andere Stelle, nutzen Sie die Pfeil-Knöpfe
     oder – mit dem Fokus auf dem Namen – <kbd>Alt</kbd>+<kbd>↑</kbd> bzw. <kbd>Alt</kbd>+<kbd>↓</kbd>. Die Reihenfolge wird sofort gespeichert und gilt für die
     Liste und Legende auf der Website; Gebiete mit „Automatisch (Palette)“ bekommen ihre Farbe nach der Position.</p>
+  <p><b>Automatische Farben:</b> Die Palette hat elf gut unterscheidbare Farben (auch bei Farbsehschwäche) – Grau wird nie automatisch vergeben,
+    damit kein Gebiet wie „nicht zugeordnet“ aussieht (von Hand bleibt es wählbar). Gebiete mit gemeinsamer Grenze bekommen immer verschiedene
+    Farben; erst wenn alle Farben vergeben sind, wiederholt sich eine – und dann nur bei Gebieten, die nicht aneinandergrenzen. Auf allen
+    Palettenfarben erreichen die Namen in der Karte hell und dunkel mindestens 4,5:1 Kontrast.</p>
   <p>Ein Klick auf den Namen eines Gebiets öffnet seine Angaben: <b>Name</b>, <b>Farbe</b> (Design-Farben des Kits, die Palette oder eine
     eigene Farbe), <b>Link</b> (über die Linkauswahl, z. B. die Seite der Regionalgruppe), <b>Infotext</b>, <b>Bild</b> aus der Mediathek
     und <b>Kontakt</b>. Design-Farben und Palette passen sich hell und dunkel automatisch an.</p>

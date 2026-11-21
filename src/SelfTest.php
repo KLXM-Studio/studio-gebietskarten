@@ -48,6 +48,8 @@ final class SelfTest
         self::bound();
         echo "Farben im Dunkeln, Kit-Farben\n";
         self::colors();
+        echo "Palette: ohne Grau, Nachbarn verschieden, Kontrast\n";
+        self::palette();
         echo "Reihenfolge\n";
         self::order();
         echo "Quellenvermerk (überall gleich)\n";
@@ -253,6 +255,62 @@ final class SelfTest
             'Vorschau: Akzent des Kits samt Design-Werten der Website (' . app()->theme->name . ': ' . $k['accent'] . ')');
     }
 
+    /** Automatische Farben (seit 0.2.1): kein Grau, Nachbarn verschieden (Graphfärbung), lesbare Beschriftung hell und dunkel */
+    private static function palette(): void
+    {
+        self::t(!in_array('p8', Colors::AUTO, true) && count(Colors::AUTO) >= 11 && count(array_unique(array_map(fn($k) => Colors::PALETTE[$k], Colors::AUTO))) === count(Colors::AUTO),
+            'automatische Palette: ohne Grau, mindestens 11 verschiedene Farben');
+        // bis 7 Gebiete wie bisher (Position → p1 … p7)
+        $few = array_map(fn($i) => ['key' => 'r' . $i, 'color' => ''], range(1, 7));
+        self::t(array_values(Colors::assign($few)) === ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'], 'bis 7 Gebiete: Farben wie bisher nach Position');
+
+        // 11 Gebiete aus den Kreisen in NRW: alle verschieden, kein Grau
+        $d = Bases::units('de', 'kreise', ['05']);
+        $ids = array_keys($d['units']);
+        $owner = $regions = [];
+        foreach (array_chunk($ids, (int) ceil(count($ids) / 11)) as $i => $chunk) {
+            $regions[] = ['key' => 'g' . $i, 'color' => ''];
+            foreach ($chunk as $id) $owner[$id] = 'g' . $i;
+        }
+        $nb = Render::neighbors($owner, $d['units']);
+        $eff = Colors::assign($regions, $nb);
+        self::t(count($regions) === 11 && count(array_unique($eff)) === 11 && !in_array('p8', $eff, true), '11 Gebiete: 11 verschiedene Farben, kein Grau', implode(',', $eff));
+        self::t(isset($nb['g0']) && in_array('g0', $nb[$nb['g0'][0]] ?? [], true), 'Nachbarn aus gemeinsamen Grenzen (in beide Richtungen)');
+
+        // 16 Länder als einzelne Gebiete (mehr Gebiete als Farben): Nachbarn nie gleich, feste Farben bleiben
+        $de = Bases::units('de', 'laender', []);
+        $owner = $regions = [];
+        foreach (array_keys($de['units']) as $id) {
+            $owner[$id] = 'l' . $id;
+            $regions[] = ['key' => 'l' . $id, 'color' => $id === '05' ? 'p3' : ''];
+        }
+        $nb = Render::neighbors($owner, $de['units']);
+        $eff = Colors::assign($regions, $nb);
+        $clash = [];
+        foreach ($nb as $k => $list) foreach ($list as $o) if ($eff[$k] === $eff[$o] && $k < $o) $clash[] = "$k/$o";
+        self::t(!$clash && !in_array('p8', $eff, true), '16 Länder: keine zwei Nachbarn mit derselben Farbe', implode(' ', $clash));
+        self::t($eff['l05'] === 'p3' && !in_array('p3', array_map(fn($o) => $eff[$o], $nb['l05'] ?? []), true), 'feste Farbe bleibt, Nachbarn meiden sie');
+        $counts = array_count_values($eff);
+        self::t(max($counts) <= 2, 'Farben gleichmäßig verteilt (höchstens zweimal bei 16 Gebieten)', json_encode($counts) ?: '');
+
+        // Kontrast der Beschriftung: hell (Mischung wie im CSS) und im Dunkeln (Wert der erzeugten Datei)
+        $bad = [];
+        foreach ([[Preview::kit(false), Preview::kit(true)], [['bg' => '#ffffff', 'ink' => '#1b1f24'], ['bg' => '#16191d', 'ink' => '#eef1f4']]] as [$kl, $kd]) {
+            foreach (Colors::AUTO as $k) {
+                $l = Colors::approx($k, $kl);
+                $dk = Colors::paletteDark($k, $kd);
+                if (Colors::labelContrast($l, $kl) < Colors::MIN_LABEL) $bad[] = "$k hell $l";
+                if (Colors::labelContrast($dk, $kd) < Colors::MIN_LABEL) $bad[] = "$k dunkel $dk";
+            }
+        }
+        self::t(!$bad, 'Palette: Beschriftung hell und dunkel ≥ 4,5:1 (Kit der Website und Standard)', implode(', ', $bad));
+        $css = Colors::sheetCss([], ['media' => '(prefers-color-scheme: dark)', 'scope' => 'html.has-dark', 'extra' => []], ['p9' => '#2d2070']);
+        self::t(str_contains($css, 'html.has-dark .gk-c-p9{--gk-c:#2d2070}'), 'Dunkel-Regel der Palette als Variable --gk-c (Fläche und Legende)');
+        $css = file_get_contents(Gebietskarten::dir() . '/assets/css/gebietskarten.css') ?: '';
+        $missing = array_filter(array_keys(Colors::PALETTE), fn($k) => !str_contains($css, '.gk-c-' . $k . ' { --gk-c: color-mix(in oklab, ' . strtolower(Colors::PALETTE[$k]) . ' ' . Colors::mixOf($k) . '%'));
+        self::t(!$missing, 'Stylesheet: jede Palettenfarbe mit demselben Anteil wie in PHP', implode(',', $missing));
+    }
+
     /** Reihenfolge der Gebiete (Route …/reihenfolge): Liste, Legende und automatische Farben folgen */
     private static function order(): void
     {
@@ -267,6 +325,11 @@ final class SelfTest
             Render::reset();
             $html = Render::html((array) Repo::map($id));
             self::t((bool) preg_match('~gk-c-p1.*?Drei.*gk-c-p2.*?Eins~s', substr($html, (int) strpos($html, 'gk-list'))), 'Liste und Palette folgen der Reihenfolge');
+            if (Colors::darkRule()) {
+                $f = preg_match('~href="[^"]*/gebietskarten/(farben-[0-9a-f]{12}\.css)"~', $html, $m) ? site()->mediaDir('gebietskarten/' . $m[1]) : '';
+                $want = '.gk-c-p1{--gk-c:' . Colors::paletteDark('p1', Preview::kit(true)) . '}';
+                self::t($f !== '' && str_contains((string) @file_get_contents($f), $want), 'Palette im Dunkeln: lesbare Werte in der erzeugten Datei', $want);
+            }
             Repo::reorder($id, [$b, 999999]);
             self::t(array_column(Repo::regions($id), 'name')[0] === 'Zwei', 'fremde IDs werden ignoriert');
         } finally {

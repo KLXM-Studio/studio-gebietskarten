@@ -17,7 +17,7 @@ namespace Klxm\Gebietskarten;
 final class Render
 {
     /** Ändert sich die Berechnung, ändert sich der Schlüssel des Zwischenspeichers */
-    private const VERSION = 3;
+    private const VERSION = 4;
     private const WIDTH = 1000;
 
     private static int $count = 0;
@@ -61,7 +61,7 @@ final class Render
         }
         $out = ['w' => self::WIDTH, 'h' => (int) round(self::WIDTH * 0.6), 'regions' => [], 'rest' => '', 'units' => [], 'lines' => '', 'labels' => [],
             'owner' => $owner, 'unitsOf' => $unitsOf, 'unmatched' => $unmatched, 'missing' => $data['missing'],
-            'names' => $editor ? array_map(fn($u) => $u['name'], $units) : [], 'empty' => !$units];
+            'names' => $editor ? array_map(fn($u) => $u['name'], $units) : [], 'empty' => !$units, 'neighbors' => self::neighbors($owner, $units)];
         if (!$units) return $out;
 
         // Ausschnitt: alle Einheiten oder nur die Gebiete (dann nur Nachbarn im Rahmen zeigen)
@@ -106,6 +106,25 @@ final class Render
         if (!is_dir(Gebietskarten::cacheDir())) @mkdir(Gebietskarten::cacheDir(), 0775, true);
         @file_put_contents($cache, json_encode($out), LOCK_EX);
         return $out;
+    }
+
+    /**
+     * Nachbarn der Gebiete: zwei Gebiete grenzen aneinander, wenn ihre Flächen einen Bogen (gemeinsame Grenze) teilen – aus der
+     * Topologie, unabhängig vom Ausschnitt. @param array<string, string> $owner Einheit → Gebiet
+     * @return array<string, list<string>> Gebiet → Nachbarn
+     */
+    public static function neighbors(array $owner, array $units): array
+    {
+        $byArc = [];
+        foreach ($owner as $id => $key) {
+            foreach ($units[$id]['polys'] ?? [] as $poly) foreach ($poly as $ring) foreach ($ring as $r) $byArc[$r < 0 ? ~$r : $r][$key] = true;
+        }
+        $nb = [];
+        foreach ($byArc as $keys) {
+            if (count($keys) < 2) continue;
+            foreach ($keys as $a => $_) foreach ($keys as $b => $_2) if ($a !== $b) $nb[(string) $a][(string) $b] = true;
+        }
+        return array_map(fn($x) => array_map('strval', array_keys($x)), $nb);
     }
 
     /** Liegt eine Einheit (grob, über ihre Bögen) im Ausschnitt? */
@@ -218,9 +237,13 @@ final class Render
         $svg .= '<g class="gk-areas">';
         $order = $regions;
         usort($order, fn($a, $b) => ($a['key'] === $active) <=> ($b['key'] === $active));   // hervorgehobenes Gebiet zuletzt (Rand oben)
-        $paints = self::paints($regions);
-        $pairs = [];
-        foreach ($paints as $pt) if ($pt['dark']) $pairs[] = [(string) $pt['fill'], $pt['dark']];
+        $paints = self::paints($regions, (array) ($geo['neighbors'] ?? []));
+        $pairs = $palDark = [];
+        foreach ($paints as $pt) {
+            if (!$pt['dark']) continue;
+            if ($pt['fill']) $pairs[] = [(string) $pt['fill'], $pt['dark']];
+            else $palDark[substr($pt['class'], 5)] = $pt['dark'];
+        }
         // Verwaltung: Dunkel-Wert für die Vorschau „Dunkel“ als Variable (dort sind Inline-Stile erlaubt, auf der Website nie)
         $pv = fn(array $pt): string => $preview && $pt['dark'] ? ' style="--gk-d:' . e($pt['dark']) . '"' : '';
         foreach ($order as $r) {
@@ -278,7 +301,7 @@ final class Render
         }
         $pop = $action === 'info' ? '<div class="gk-pop" role="dialog" aria-modal="false" hidden data-gk-pop><button type="button" class="gk-pop__close" data-gk-close aria-label="' . e(lt('Schließen')) . '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13"/></svg></button><div class="gk-pop__body" data-gk-body></div></div>' : '';
 
-        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs) : '')
+        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs, $palDark) : '')
             . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
             . $empty . '<div class="gk-map">' . $svg . $pop . '</div>'
             . '<figcaption class="gk-cap">' . $cap . '</figcaption></figure>';
@@ -331,20 +354,25 @@ final class Render
     }
 
     /**
-     * Farbe je Gebiet (Klasse, fill, Dunkel-Wert). Dunkel-Wert eigener Farben: Feld „im Dunkeln“ oder automatisch aus den
-     * Dunkel-Farben des Kits (Preview::kit(true), nur wenn nötig berechnet).
+     * Farbe je Gebiet (Klasse, fill, Dunkel-Wert). Automatische Farben über Colors::assign() (Nachbarn verschieden).
+     * Dunkel-Wert eigener Farben: Feld „im Dunkeln“ oder automatisch, Palettenfarben automatisch – aus den Dunkel-Farben des
+     * Kits (Preview::kit(true), nur wenn nötig berechnet).
+     * @param array<string, list<string>> $neighbors
      * @return array<string, array{class: string, fill: ?string, dark: ?string}>
      */
-    public static function paints(array $regions): array
+    public static function paints(array $regions, array $neighbors = []): array
     {
         $out = [];
         $kitDark = null;
-        foreach (array_values($regions) as $i => $r) {
-            $eff = Colors::effective((string) $r['color'], $i);
+        $effs = Colors::assign($regions, $neighbors);
+        foreach ($regions as $r) {
+            $eff = $effs[(string) $r['key']];
             $dark = '';
             if ($eff !== '' && $eff[0] === '#') {
                 $own = Colors::hex((string) ($r['color_dark'] ?? ''));
                 $dark = $own !== '' ? $own : Colors::dark($eff, $kitDark ??= Preview::kit(true));
+            } elseif (isset(Colors::PALETTE[$eff]) && Colors::darkRule()) {
+                $dark = Colors::paletteDark($eff, $kitDark ??= Preview::kit(true));
             }
             $out[$r['key']] = Colors::paint($eff, $dark);
         }
@@ -390,7 +418,7 @@ final class Render
         $kit += ['accent' => '#2f6f8f', 'bg' => '#ffffff', 'ink' => '#1b1f24', 'surface' => '#eef1f4', 'line' => '#d0d6dd', 'muted' => '#5b6470'];
         $regions = Bound::regionsOf($map);
         $geo = self::geometry($map, $regions);
-        $index = array_flip(array_column($regions, 'key'));
+        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
         $h = $geo['h'] + 50;
         $x = fn(string $s): string => htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
         $s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $geo['w'] . ' ' . $h . '" width="' . $geo['w'] . '" height="' . $h . '">'
@@ -399,7 +427,7 @@ final class Render
         $s .= '<g id="gebiete">';
         foreach ($regions as $r) {
             if (($geo['regions'][$r['key']] ?? '') === '') continue;
-            $fill = Colors::approx(Colors::effective($r['color'], $index[$r['key']]), $kit);
+            $fill = Colors::approx($effs[(string) $r['key']], $kit);
             $s .= '<path id="' . $x($r['key']) . '" d="' . $geo['regions'][$r['key']] . '" fill="' . $fill . '" stroke="' . $kit['bg'] . '" stroke-width="' . ($r['key'] === $active ? 3 : 1.5) . '" fill-rule="evenodd"><title>' . $x((string) $r['name']) . '</title></path>';
         }
         $s .= '</g>';

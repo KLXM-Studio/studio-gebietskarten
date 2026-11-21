@@ -26,11 +26,18 @@
     <li><b>Mit der Tastatur:</b> In der Liste rechts (z. B. „Kreise“) suchen Sie nach Name oder Schlüssel, springen mit <kbd>Tab</kbd> zum
       Kästchen und ordnen mit der <kbd>Leertaste</kbd> zu.</li>
     <li><b>Zuordnung speichern</b> – die Vorschau unten zeigt sofort das Ergebnis, mit den Schaltern <b>Hell</b> und <b>Dunkel</b> auch im
-      dunklen Farbschema.</li>
+      dunklen Farbschema. Die Vorschau nutzt die Farben Ihres Kits samt der Einstellungen unter <b>Design</b> – so wie die Website.</li>
   </ol>
+  <p><b>Reihenfolge der Gebiete:</b> Ziehen Sie ein Gebiet in der Liste rechts am Griff an eine andere Stelle, nutzen Sie die Pfeil-Knöpfe
+    oder – mit dem Fokus auf dem Namen – <kbd>Alt</kbd>+<kbd>↑</kbd> bzw. <kbd>Alt</kbd>+<kbd>↓</kbd>. Die Reihenfolge wird sofort gespeichert und gilt für die
+    Liste und Legende auf der Website; Gebiete mit „Automatisch (Palette)“ bekommen ihre Farbe nach der Position.</p>
   <p>Ein Klick auf den Namen eines Gebiets öffnet seine Angaben: <b>Name</b>, <b>Farbe</b> (Design-Farben des Kits, die Palette oder eine
     eigene Farbe), <b>Link</b> (über die Linkauswahl, z. B. die Seite der Regionalgruppe), <b>Infotext</b>, <b>Bild</b> aus der Mediathek
-    und <b>Kontakt</b>. Design-Farben und Palette passen sich hell und dunkel automatisch an; eine eigene Farbe gilt in beiden Fällen gleich.</p>
+    und <b>Kontakt</b>. Design-Farben und Palette passen sich hell und dunkel automatisch an.</p>
+  <p><b>Eigene Farben im Dunkeln:</b> Zu einer eigenen Farbe können Sie im Feld <b>Eigene Farbe im Dunkeln</b> einen zweiten Wert angeben. Bleibt es
+    leer, leitet Studio den Wert automatisch ab – passend zum dunklen Hintergrund Ihres Kits und so dunkel, dass die Namen in der Karte mindestens
+    4,5:1 Kontrast haben. Unter den Farbfeldern sehen Sie den Kontrast der Beschriftung hell und im Dunkeln; liegt er unter 4,5:1, steht ein Hinweis
+    daneben. Ihre eigene helle Farbe ändert Studio nie. Ob die Website überhaupt dunkel erscheint, stellen Sie unter <b>Design</b> ein („Dunkelmodus anbieten“).</p>
   <p>Unter <b>Einstellungen der Karte</b> legen Sie fest, ob Flächen ohne Gebiet grau erscheinen, ob die Grenzen innerhalb der Gebiete und
     die Namen in der Karte zu sehen sind, ob die Liste der Gebiete unter der Karte steht und ob der Ausschnitt nur bis zum Rand der Gebiete reicht.</p>
 
@@ -53,6 +60,13 @@
     bzw. Gemeinden des Eintrags – als Namen („Wesel, Kleve“) oder amtliche Schlüssel („05170“), durch Komma oder Zeilenumbruch getrennt.
     Name, Farbe, Link, Infotext, Bild und Kontakt können ebenfalls aus Feldern kommen; ohne Link-Feld verlinkt die Detailseite des Eintrags.
     Angaben, die zu keiner Fläche passen, zeigt die Karte in der Verwaltung als Hinweis an.</p>
+  <p><b>Per Klick zuordnen:</b> Auch bei Karten aus einer Datentabelle wählen Sie oben bei <b>Zuordnen zu</b> einen Eintrag und klicken auf die
+    Flächen (oder nutzen die Liste rechts mit der Tastatur). <b>Zuordnung speichern</b> schreibt das Feld mit den Flächen in die betroffenen Einträge –
+    genau so, als hätten Sie den Eintrag in der Datentabelle bearbeitet: mit Version (Notiz „Gebietskarte …: Flächen per Klick zugeordnet“), Eintrag im
+    Protokoll und unverändertem Status. Es gelten die Rechte Ihrer Rolle: Sie brauchen „Daten bearbeiten“ für die Tabelle; veröffentlichte Einträge
+    ändert nur, wer auch veröffentlichen darf. Einträge, die Sie nicht ändern dürfen (oder die zu einer anderen Website des Netzwerks gehören), sind mit
+    einem Schloss markiert – ihre Flächen bleiben, wie sie sind. Das Feld muss eine Mehrfachauswahl, ein Text- oder ein Textfeld sein; Studio schreibt
+    die Flächen so, wie die Tabelle es schon hält (Namen oder Schlüssel), und lässt Angaben außerhalb dieser Karte stehen.</p>
   <p><b>Netzwerk mit mehreren Websites:</b> Eine geteilte Datentabelle funktioniert genauso. Jede Website legt ihre eigene Karte auf die geteilte
     Tabelle an. Mit dem Feld <b>Website</b> (Schlüssel oder Adresse der Website) hebt die Darstellung „Gebiet dieser Website“ auf jeder Website
     ihr eigenes Gebiet hervor.</p>
@@ -61,3 +75,9 @@
   <p>Der Knopf <b>Als Grafik weiterbearbeiten</b> legt die Karte als SVG in der Mediathek ab (mit festen Farben, Namen und Quellenvermerk) und
     öffnet sie im Grafik-Editor, wenn er eingeschaltet ist – etwa für ein Plakat oder einen Social-Media-Beitrag. Ohne Grafik-Editor heißt der Knopf
     <b>Als SVG in die Mediathek</b>. Die Datei ist danach unabhängig von der Karte.</p>
+
+  <h3 id="gebietskarten-quelle">Quellenvermerk</h3>
+  <p>Die Kartendaten stehen unter der Datenlizenz Deutschland – Namensnennung 2.0. Studio setzt den Quellenvermerk nach den Bedingungen des BKG
+    automatisch und überall gleich: unter jede Karte und in die Vorschau als „Kartengrundlage: © BKG (Jahr) dl-de/by-2-0, Datenquellen, vereinfacht“
+    (mit Links), in jeden SVG-Export, die Mediathek und den Grafik-Editor mit den Adressen statt Links. Entfernen Sie ihn im Grafik-Editor nicht.
+    Ältere Exporte behalten ihren damaligen Text – exportieren Sie die Karte bei Bedarf neu.</p>

@@ -28,7 +28,7 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.1.0',
+    'version' => '0.2.0',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
@@ -111,7 +111,7 @@ return [
 
         $x->command('gebietskarten:daten', 'Gebietskarten: Kartendaten der Gemeinden je Land nachladen (--land=05,06, --from=URL|Ordner, --list, --remove)',
             fn(array $args): int => Klxm\Gebietskarten\DataPacks::console($args));
-        $x->command('gebietskarten:selftest', 'Gebietskarten: Verschmelzen, Zuordnung, Datentabellen, Ausgabe (CSP, Zugänglichkeit), Quellenvermerk',
+        $x->command('gebietskarten:selftest', 'Gebietskarten: Verschmelzen, Zuordnung (auch in Einträge), Reihenfolge, Farben im Dunkeln, Ausgabe (CSP, Zugänglichkeit), Quellenvermerk',
             fn(array $args): int => Klxm\Gebietskarten\SelfTest::run());
     },
 ];

@@ -15,6 +15,7 @@ return [
     'Karte: {title}' => 'Map: {title}',
     'Kartengrundlage' => 'Base map',
     'Kreis' => 'district',
+    'Lizenz' => 'License',
     'Kreise' => 'districts',
     'Mehr zu {name}' => 'More about {name}',
     'Schließen' => 'Close',

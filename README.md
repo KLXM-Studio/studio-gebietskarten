@@ -39,11 +39,12 @@ Einschalten je Website unter **Administration → Funktionen & Erweiterungen** o
 | Bereich | Was |
 |---|---|
 | Kartengrundlage | Deutschland: Bundesländer, Kreise und kreisfreie Städte (im Paket), Gemeinden je Land (zum Nachladen). Ausschnitt: einzelne Länder oder ganz Deutschland. |
-| Verwaltung | **Gebietskarten** im Menü: Karte anlegen, Gebiete bilden per Klick auf die Karte oder per Liste mit Suche (Tastatur), Angaben je Gebiet mit Linkauswahl und Mediathek, Vorschau hell/dunkel mit den Farben des Kits, Kartendaten nachladen. |
-| Datentabelle | Gebiete statt hier aus einer Datentabelle: ein Eintrag = ein Gebiet, Flächen als Namen oder amtliche Schlüssel in einem Feld. Auch geteilte Tabellen im Netzwerk – jede Website hebt „ihr“ Gebiet hervor (Feld „Website“). |
+| Verwaltung | **Gebietskarten** im Menü: Karte anlegen, Gebiete bilden per Klick auf die Karte oder per Liste mit Suche (Tastatur), Gebiete sortieren (Ziehen, Pfeil-Knöpfe, `Alt`+`↑/↓`), Angaben je Gebiet mit Linkauswahl und Mediathek, Vorschau hell/dunkel mit den Farben des Kits und den Design-Werten der Website, Kartendaten nachladen. |
+| Datentabelle | Gebiete statt hier aus einer Datentabelle: ein Eintrag = ein Gebiet, Flächen als Namen oder amtliche Schlüssel in einem Feld. **Zuordnung per Klick** schreibt das Feld der Einträge – mit den Rechten, Versionen und dem Protokoll des Cores. Auch geteilte Tabellen im Netzwerk – jede Website hebt „ihr“ Gebiet hervor (Feld „Website“). |
+| Farben | Design-Farben des Kits, Palette (Okabe-Ito) oder eigene Farbe – eigene Farben mit Wert **im Dunkeln** (eigenes Feld oder automatisch, Beschriftung ≥ 4,5:1). |
 | Block „Gebietskarte“ | Übersicht, ein Gebiet hervorheben, Gebiet dieser Seite oder Website; Klick öffnet den Link, ein Info-Fenster oder nichts. Liste der Gebiete als Alternative, Quellenvermerk unter jeder Karte. |
 | Barrierefreiheit | Jedes Gebiet ein Link bzw. Sprungziel mit Namen, sichtbarer Fokus, Liste für Screenreader und ohne JavaScript, Namen in der Karte mit Kontrast-Rand. |
-| CSP | Keine `style`-Attribute, keine Inline-Skripte: Farben als Klassen (Kit-Vertrag `--kit-*`) bzw. SVG-Attribut `fill`; Skript (unter 2 KB) nur beim Info-Fenster. |
+| CSP | Keine `style`-Attribute, keine Inline-Skripte: Farben als Klassen (Kit-Vertrag `--kit-*`) bzw. SVG-Attribut `fill`, Dunkel-Werte eigener Farben als erzeugte Datei im Medienordner; Skript (unter 2 KB) nur beim Info-Fenster. |
 | Grafik | „Als Grafik weiterbearbeiten“: Karte als SVG in die Mediathek und – wenn das Paket `grafik` aktiv ist – gleich in den Grafik-Editor. |
 
 Befehle: `gebietskarten:daten` (Kartendaten nachladen, `--land=05,06`, `--from=URL|Ordner`, `--list`, `--remove`) und
@@ -62,8 +63,9 @@ Befehle: `gebietskarten:daten` (Kartendaten nachladen, `--land=05,06`, `--from=U
 - **Lizenz:** [Datenlizenz Deutschland – Namensnennung – Version 2.0](https://www.govdata.de/dl-de/by-2-0) (`dl-de/by-2-0`).
 - **Quellenvermerk** (Nutzungsbedingungen des BKG für VG250, Stand 19.08.2025): `© BKG (2026) dl-de/by-2-0, Datenquellen:
   https://sgx.geodatenzentrum.de/web_public/gdz/datenquellen/datenquellen_vg_nuts.pdf` – im Web „BKG“ und „dl-de/by-2-0“ verlinkt –
-  plus Veränderungshinweis. Die Erweiterung setzt ihn automatisch unter jede Karte und in jeden SVG-Export
-  („Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen, vereinfacht“).
+  plus Veränderungshinweis. Die Erweiterung setzt ihn automatisch und überall gleich: unter jede Karte, in die Vorschau und auf „Kartendaten“
+  („Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen, vereinfacht“ mit Links), in Mediathek, SVG-Export und Grafik-Editor mit den
+  Adressen statt Links („Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen: https://sgx.geodatenzentrum.de/…, vereinfacht“).
 - **Aufbereitung** (`tools/kartendaten/build.mjs`, mapshaper – nur für die Pflege, nicht im Paket): nur Landflächen, im Quellsystem
   topologieerhaltend vereinfacht (Länder 1500 m, Kreise 600 m, Gemeinden 120 m), WGS84, quantisiert. Gemeinden: eine Topologie für
   ganz Deutschland, je Land aufgeteilt mit den Bogen-Nummern der Gesamt-Topologie (`arcIds`) – Gebiete über Landesgrenzen verschmelzen lückenlos.
@@ -82,7 +84,9 @@ Eigene Quelle: `'gebietskarten' => ['data_url' => 'https://…/' oder '/pfad/zum
 **Area maps for KLXM Studio.** Combine the shapes of an open base map (Germany: states, districts, municipalities from the BKG VG250
 dataset) into areas such as regional groups, districts of an association or sales territories, add a name, color, link, text, image
 and contact per area, and show them with the “Area map” block: a server-rendered, accessible SVG without any map library or third-party
-requests (strict CSP, no style attributes). Areas can also come from a data table, including shared tables across a network. Map data:
+requests (strict CSP, no style attributes). Areas can also come from a data table, including shared tables across a network – assigning
+shapes by clicking writes the entries' field with the core's permissions, revisions and activity log. Areas can be reordered by drag and drop
+or keyboard; custom colors get a dark-mode value (own or derived with a 4.5:1 label contrast). Map data:
 © BKG (2026) dl-de/by-2-0 (Data licence Germany – attribution – version 2.0), simplified; the attribution is added below every map
 automatically. Municipalities are downloaded per state on demand (`php bin/console gebietskarten:daten`). MIT licensed.
 

@@ -7,7 +7,8 @@
   <ul>
     <li><b>Dateien:</b> <code>extension.php</code> (Manifest), <code>src/</code> – <code>Topo</code> (TopoJSON lesen, verschmelzen, projizieren,
       vereinfachen, SVG-Pfade), <code>Bases</code> (Grundlagen, Ebenen, Quellenvermerk), <code>DataPacks</code> (Nachladen), <code>Repo</code>
-      (Tabellen), <code>Bound</code> (Datentabellen), <code>Render</code> (Ausgabe), <code>Colors</code>, <code>Preview</code>, <code>AdminController</code>,
+      (Tabellen), <code>Bound</code> (Datentabellen), <code>EntryAssign</code> (Zuordnung per Klick in Einträge), <code>Render</code> (Ausgabe),
+      <code>Colors</code> (Farben, Dunkel-Werte), <code>Preview</code> (Kit-Farben wie auf der Website), <code>AdminController</code>,
       <code>SelfTest</code>; <code>blocks/gebietskarte.php</code>, <code>views/admin/</code>, <code>data/de/</code> (Länder, Kreise),
       <code>assets/</code> (Quellen) und <code>public/</code> (gebaut, <code>extensions:publish</code>).</li>
     <li><b>Integrationspunkte:</b> <code>feature()</code> + <code>permissions()</code> (<code>gebietskarten.edit</code>), <code>table()</code>
@@ -35,11 +36,25 @@ $svg = Render::svg(Repo::map(3));                                               
       <code>&lt;a class="gk-area" aria-label&gt;</code>, beim Info-Fenster mit Sprungziel <code>#…-r{id}</code> in der Liste (ohne JavaScript nutzbar), sonst
       <code>&lt;g&gt;</code>. Darunter <code>&lt;ul class="gk-list"&gt;</code> (sichtbar oder <code>gk-sr</code>) und <code>&lt;p class="gk-src"&gt;</code> mit dem Quellenvermerk.</li>
     <li>Keine <code>style</code>-Attribute: Farben als Klassen <code>gk-c-accent|accent-soft|accent-deep|surface|muted|p1…p8</code> (Variable <code>--gk-c</code>),
-      eigene Farben als SVG-Darstellungsattribut <code>fill</code>. Alle Farben aus dem Kit-Vertrag (<code>--kit-*</code>) mit Rückfall; eigene
+      eigene Farben hell als SVG-Darstellungsattribut <code>fill</code> plus Klasse <code>gk-c-own gk-x-{hell}-{dunkel}</code>. Alle Farben aus dem Kit-Vertrag (<code>--kit-*</code>) mit Rückfall; eigene
       Variablen <code>--gk-bg, --gk-ink, --gk-muted, --gk-edge, --gk-rest, --gk-focus, --gk-dim</code> – Kits steuern über sie nach.</li>
+    <li><b>Eigene Farben im Dunkeln</b> (Spalte <code>color_dark</code>, Bindung <code>color_dark</code>): Wert aus dem Feld oder <code>Colors::dark()</code> –
+      78 % mit dem Dunkel-Hintergrund gemischt, dann mit <code>Core\Design::readable()</code> Richtung Hintergrund, bis die Schriftfarbe im Dunkeln
+      (<code>--kit-ink</code>) darauf 4,5:1 erreicht. Die Dunkel-Regel steht in einer erzeugten Datei im Medienordner der Website
+      (<code>media/gebietskarten/farben-{prüfsumme}.css</code>, wie die Design-Datei des Cores; <code>style-src 'self'</code>) unter der Dunkel-Regel des Kits
+      (<code>design.dark</code>: <code>media</code> + <code>scope</code>, Schalter-Klasse <code>manual.dark</code>, <code>force</code>) – ohne Dunkel-Angabe des Kits bleiben
+      eigene Farben hell. Ältere Dateien werden nach sieben Tagen entfernt. In der Vorschau der Verwaltung trägt jede Fläche <code>--gk-d</code> inline.</li>
     <li>Stylesheet <code>css/gebietskarten.css</code> einmal je Seite; Skript <code>js/gebietskarten.js</code> (unter 2 KB) nur beim Info-Fenster.
       Position des Fensters per CSSOM.</li>
   </ul>
+
+  <h3 id="gebietskarten-kitfarben">Kit-Farben in der Verwaltung (<code>Preview::kit()</code>)</h3>
+  <p>Die Verwaltung lädt das Kit nicht. <code>Preview::kit($dark)</code> löst die Werte deshalb wie der Browser der Website auf: Stylesheet des Kits
+    (<code>public/assets/kits/{kit}/css/site.css</code>, Eltern-Kits zuerst) – Variablen an <code>:root</code>, <code>html</code>, <code>body</code>, <code>*</code>,
+    <code>:where(*)</code> außerhalb von <code>@media</code>, im Dunkeln zusätzlich unter den Dunkel-Selektoren des Kits –, darüber <code>Core\Design::css()</code>
+    (Werte der Website samt Ableitungen), dann <code>var()</code>, <code>color-mix()</code> (sRGB-Näherung), <code>light-dark()</code>, <code>#rgb</code>, <code>rgb()</code>.
+    Ergebnis: <code>accent, bg, ink, text, muted, surface, line</code> plus <code>source</code> (<code>kit</code> | <code>tokens</code>). Kits ohne
+    Kit-Vertrag: Design-Tokens nach üblichen Namen. Genutzt für die Vorschau, die Editor-Karte, den Dunkel-Wert eigener Farben und den SVG-Export.</p>
 
   <h3 id="gebietskarten-daten-tech">Kartendaten und Nachladen</h3>
   <ul>
@@ -60,5 +75,21 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>image</code>, <code>contact</code>, <code>site</code>. <code>Bound::resolve()</code> nimmt Schlüssel (auch ohne führende Null) und Namen
     (ohne Groß-/Kleinschreibung, „Kreis …“, Zusätze nach Komma). Geteilte Tabellen (<code>Core\Data\Shared</code>) gehen über <code>Entries</code> wie lokale;
     <code>site</code> vergleicht mit dem Schlüssel und den Hosts der Website.</p>
+  <p><b>Zuordnung per Klick</b> (<code>EntryAssign</code>, Route <code>POST /admin/gebietskarten/{id}/zuordnung</code> wie bei eigenen Karten, JSON
+    <code>{"regions": {"{eintrag}": ["05170", …]}}</code>): nur mit <code>can('data.edit', $tabelle)</code> und einem Feld vom Typ <code>multiselect</code>,
+    <code>text</code> oder <code>textarea</code>; je Eintrag <code>Core\Data\EntryEdit::reason()</code> (veröffentlicht nur mit <code>data.publish</code>, fremde
+    Einträge geteilter Tabellen und externe Quellen nie). Gespeichert wird nur, was sich geändert hat, mit <code>Entries::save($t, $id, [$feld =&gt; …, 'status' =&gt;
+    bisher], $notiz)</code> – Prüfung, Bearbeitungssperre, Version (<code>Revisions</code>), <code>EntrySaved</code> (Aktionsprotokoll), Seiten-Cache wie im Core.
+    <code>EntryAssign::value()</code> behält Werte außerhalb der Karte, schreibt neue Flächen in der Schreibweise der Tabelle (Mehrheit: Namen oder Schlüssel;
+    mehrdeutige Namen als Schlüssel; Mehrfachauswahl nur über vorhandene Optionen) und trennt wie bisher (Zeile, Semikolon, Komma). Antwort: <code>saved</code>,
+    <code>errors</code> (je Eintrag), <code>owner</code> (neue Zuordnung), <code>preview</code>.</p>
+  <p><b>Reihenfolge</b> eigener Gebiete: <code>POST /admin/gebietskarten/{id}/reihenfolge</code> mit <code>ids[]</code> (Formular oder JSON); JSON-Antwort mit
+    <code>order</code>, <code>colors</code> (Palette nach Position) und <code>preview</code>. Editor: HTML-Drag-and-Drop, Knöpfe, <kbd>Alt</kbd>+<kbd>↑/↓</kbd>,
+    Ansage über eine Live-Region. Karten aus Datentabellen folgen der Sortierung der Tabelle.</p>
+  <p><b>Quellenvermerk</b> an einer Stelle: <code>Bases::attribution()</code> (Anbieter, Jahr, Lizenz, Adressen, Veränderungshinweis) →
+    <code>Render::attributionHtml()</code> (unter jeder Karte, Vorschau, Kartendaten) und <code>Render::attributionText()</code> (Mediathek, <code>&lt;desc&gt;</code>
+    und zweizeiliger Text im SVG-Export – Links überstehen die SVG-Bereinigung nicht, darum mit Adressen).</p>
   <p>Selbsttest: <code>php bin/console gebietskarten:selftest --site=…</code> (Verschmelzen am Beispiel und an echten Kreisen, über die Landesgrenze,
-    Zuordnung, Datentabelle, Ausgabe ohne <code>style</code> und Inline-Skript, Namen und Liste, Quellenvermerk, Nachladen mit Prüfsumme).</p>
+    Zuordnung, Datentabelle, Ausgabe ohne <code>style</code> und Inline-Skript, Namen und Liste, Quellenvermerk überall gleich, Nachladen mit Prüfsumme;
+    seit 0.2.0 Dunkel-Werte und Kontrast, Dunkel-Regel als Datei, Auflösen der Kit-Farben, Reihenfolge und die Zuordnung in Einträge mit Rollen „Autorin“ und
+    „Redaktion“ – Version, Protokoll, Status).</p>

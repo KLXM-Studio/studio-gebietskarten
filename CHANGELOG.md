@@ -1,5 +1,24 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.2.0 (2026-11-21)
+
+- **Zuordnung per Klick auch bei Karten aus einer Datentabelle:** Klick auf die Fläche bzw. die Liste (Tastatur) schreibt das Feld mit den
+  Flächen in die Einträge – über `Core\Data\Entries::save()` (Prüfung, Bearbeitungssperre, Version mit Notiz, Aktionsprotokoll, Seiten-Cache),
+  Rechte wie beim Bearbeiten (`data.edit` je Tabelle, `EntryEdit::reason()`: veröffentlicht nur mit `data.publish`, fremde Einträge geteilter
+  Tabellen und externe Quellen nie), Status bleibt. Gesperrte Einträge sind markiert, ihre Flächen unveränderbar. Felder: Mehrfachauswahl,
+  Text, Textfeld; Schreibweise wie in der Tabelle (Namen oder Schlüssel), Werte außerhalb der Karte bleiben (`EntryAssign`).
+- **Gebiete sortieren** per Ziehen, Pfeil-Knöpfen oder `Alt`+`↑/↓` (Route `…/reihenfolge`, Ansage per Live-Region); Liste, Legende und
+  automatische Palettenfarben folgen sofort.
+- **Eigene Farben mit Dunkel-Variante:** optionales Feld „Eigene Farbe im Dunkeln“ (Spalte `color_dark`, Bindung `color_dark`), sonst
+  automatisch abgeleitet, sodass die Beschriftung im Dunkeln mindestens 4,5:1 erreicht. Kontrast hell/dunkel mit Hinweis im Formular.
+  Ausgabe ohne Inline-Stile: Dunkel-Regel als erzeugte Datei im Medienordner unter der Dunkel-Regel des Kits (`design.dark`).
+- **Vorschau näher am Kit:** `Preview::kit()` löst die Farben wie die Website auf – Stylesheet des Kits (Kit-Vertrag `--kit-*`, Dunkel-Regel)
+  plus Design-Werte der Website (`Core\Design::css()`), `var()`, `color-mix()`, `light-dark()`. Hinweis, wenn der Dunkelmodus der Website aus ist.
+- **Quellenvermerk überall gleich** nach den BKG-Bedingungen: „Kartengrundlage: © BKG (Jahr) dl-de/by-2-0, Datenquellen, vereinfacht“ (Web mit
+  Links) bzw. mit Adressen (Mediathek, SVG-Export, Grafik-Editor: zweizeilig plus `<desc>`, übersteht die SVG-Bereinigung). Auch auf
+  „Kartendaten“. Ältere Exporte mit „© GeoBasis-DE / BKG“ bitte neu exportieren.
+- Selbsttest erweitert (76 Prüfungen), Handbuch, Entwicklerhandbuch, englische Texte.
+
 ## 0.1.0 (2026-11-21)
 
 Erste Fassung.

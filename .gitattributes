@@ -1,0 +1,4 @@
+# Werkzeug zum Aufbereiten der Kartendaten – nur für die Pflege des Pakets, nicht in Composer-Archiven (git archive / dist)
+/tools export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore

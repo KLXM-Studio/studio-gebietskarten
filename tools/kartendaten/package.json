@@ -1,0 +1,11 @@
+{
+  "name": "klxm-studio-gebietskarten-kartendaten",
+  "private": true,
+  "license": "MIT",
+  "description": "Werkzeug zum Aufbereiten der Kartendaten (BKG VG250) für die Erweiterung „gebietskarten“ – nur für die Pflege des Pakets, nicht Teil der Auslieferung (export-ignore).",
+  "type": "module",
+  "packageManager": "pnpm@10.29.2",
+  "devDependencies": {
+    "mapshaper": "0.7.101"
+  }
+}

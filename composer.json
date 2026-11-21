@@ -1,0 +1,12 @@
+{
+    "name": "klxm/studio-gebietskarten",
+    "description": "KLXM Studio – Gebietskarten: Flächen freier Kartengrundlagen (Deutschland: Länder, Kreise, Gemeinden aus BKG VG250) zu Gebieten zusammenfassen – Regionalgruppen, Kreise eines Verbands, Vertriebsgebiete – mit Infos je Gebiet, als zugängliches SVG ohne Kartenbibliothek",
+    "type": "klxm-studio-extension",
+    "license": "MIT",
+    "keywords": ["klxm-studio", "klxm-studio-extension", "map", "svg", "regions", "choropleth", "vg250"],
+    "homepage": "https://studio.klxm.de",
+    "support": { "source": "https://github.com/KLXM-Studio/studio-gebietskarten", "issues": "https://github.com/KLXM-Studio/studio-gebietskarten/issues" },
+    "authors": [{ "name": "KLXM Crossmedia GmbH and contributors" }],
+    "require": { "php": ">=8.4.1" },
+    "extra": { "klxm-studio": { "entry": "extension.php", "requires-core": ">=1.0.0" } }
+}

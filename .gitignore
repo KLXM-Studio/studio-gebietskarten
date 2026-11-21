@@ -1,0 +1,4 @@
+node_modules/
+tools/kartendaten/node_modules/
+build/
+.DS_Store

@@ -1,6 +1,7 @@
 <?php
 /** Kartendaten: Länder und Kreise im Paket, Gemeinden je Land nachladen. @var array $packs  @var string $source  @var list<string> $needed  @var array $flash */
 use Klxm\Gebietskarten\Bases;
+use Klxm\Gebietskarten\Render;
 use Klxm\Gebietskarten\Gebietskarten as G;
 
 $actions = '<a class="adm-btn adm-btn--ghost" href="' . e(url(G::ADMIN)) . '">' . icon('arrow-left') . ' ' . e(__('Zur Übersicht')) . '</a>';
@@ -35,6 +36,8 @@ $att = Bases::attribution('de', 'kreise');
 </section>
 <section class="adm-card">
   <h2><?= e(__('Quelle und Lizenz')) ?></h2>
-  <p><?= e(__('Verwaltungsgebiete 1:250 000 (VG250) des Bundesamts für Kartographie und Geodäsie, vereinfacht für die Darstellung im Web. Lizenz: Datenlizenz Deutschland – Namensnennung – Version 2.0. Unter jeder Karte steht automatisch der Quellenvermerk:')) ?> <b><?= e($att['text']) ?></b>.</p>
+  <p><?= e(__('Verwaltungsgebiete 1:250 000 (VG250) des Bundesamts für Kartographie und Geodäsie, vereinfacht für die Darstellung im Web. Lizenz: Datenlizenz Deutschland – Namensnennung – Version 2.0. Unter jeder Karte, in der Vorschau und in jedem SVG-Export steht automatisch derselbe Quellenvermerk:')) ?></p>
+  <?= Render::attributionHtml('de', 'kreise', 'gk-adm-src') ?>
+  <p class="adm-muted"><?= e(__('Als Text (Mediathek, Grafik-Editor): {text}', ['text' => Render::attributionText('de', 'kreise')])) ?></p>
   <p><a href="<?= e($att['url']) ?>" target="_blank" rel="noopener"><?= e(__('Lizenztext (govdata.de)')) ?></a></p>
 </section>

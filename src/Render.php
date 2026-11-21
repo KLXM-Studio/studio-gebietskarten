@@ -218,23 +218,27 @@ final class Render
         $svg .= '<g class="gk-areas">';
         $order = $regions;
         usort($order, fn($a, $b) => ($a['key'] === $active) <=> ($b['key'] === $active));   // hervorgehobenes Gebiet zuletzt (Rand oben)
-        $index = array_flip(array_column($regions, 'key'));
+        $paints = self::paints($regions);
+        $pairs = [];
+        foreach ($paints as $pt) if ($pt['dark']) $pairs[] = [(string) $pt['fill'], $pt['dark']];
+        // Verwaltung: Dunkel-Wert für die Vorschau „Dunkel“ als Variable (dort sind Inline-Stile erlaubt, auf der Website nie)
+        $pv = fn(array $pt): string => $preview && $pt['dark'] ? ' style="--gk-d:' . e($pt['dark']) . '"' : '';
         foreach ($order as $r) {
             $d = $geo['regions'][$r['key']] ?? '';
             if ($d === '') continue;
-            $paint = Colors::paint(Colors::effective($r['color'], $index[$r['key']]));
+            $paint = $paints[$r['key']];
             $cls = 'gk-area ' . $paint['class'] . ($r['key'] === $active ? ' is-active' : '');
             $path = '<path d="' . $d . '" fill-rule="evenodd"' . ($paint['fill'] ? ' fill="' . e($paint['fill']) . '"' : '') . '/>';
             $name = (string) $r['name'];
             $href = $action === 'link' && $r['link'] !== '' ? link_href($r['link']) : '';
             if ($href !== '' && $href !== '#') {
-                $svg .= '<a class="' . $cls . '" href="' . e($href) . '" aria-label="' . e($name) . '"' . ($r['key'] === $active ? ' aria-current="true"' : '') . ext_attrs($r['link']) . '>'
+                $svg .= '<a class="' . $cls . '" href="' . e($href) . '" aria-label="' . e($name) . '"' . ($r['key'] === $active ? ' aria-current="true"' : '') . ext_attrs($r['link']) . $pv($paint) . '>'
                     . '<title>' . e($name) . '</title>' . $path . '</a>';
             } elseif ($action === 'info') {
-                $svg .= '<a class="' . $cls . '" href="#' . $id . '-' . e($r['key']) . '" aria-label="' . e(lt('{name}: Informationen', ['name' => $name])) . '" data-gk-info="' . e($r['key']) . '" aria-haspopup="dialog">'
+                $svg .= '<a class="' . $cls . '" href="#' . $id . '-' . e($r['key']) . '" aria-label="' . e(lt('{name}: Informationen', ['name' => $name])) . '" data-gk-info="' . e($r['key']) . '" aria-haspopup="dialog"' . $pv($paint) . '>'
                     . '<title>' . e($name) . '</title>' . $path . '</a>';
             } else {
-                $svg .= '<g class="' . $cls . '"><title>' . e($name) . '</title>' . $path . '</g>';
+                $svg .= '<g class="' . $cls . '"' . $pv($paint) . '><title>' . e($name) . '</title>' . $path . '</g>';
             }
         }
         $svg .= '</g>';
@@ -254,8 +258,8 @@ final class Render
         $items = '';
         foreach ($regions as $r) {
             if (($geo['regions'][$r['key']] ?? '') === '' && !$preview) continue;
-            $paint = Colors::paint(Colors::effective($r['color'], $index[$r['key']]));
-            $sw = '<svg class="gk-swatch ' . $paint['class'] . '" viewBox="0 0 10 10" aria-hidden="true" focusable="false"><rect width="10" height="10" rx="2"' . ($paint['fill'] ? ' fill="' . e($paint['fill']) . '"' : '') . '/></svg>';
+            $paint = $paints[$r['key']];
+            $sw = '<svg class="gk-swatch ' . $paint['class'] . '" viewBox="0 0 10 10" aria-hidden="true" focusable="false"' . $pv($paint) . '><rect width="10" height="10" rx="2"' . ($paint['fill'] ? ' fill="' . e($paint['fill']) . '"' : '') . '/></svg>';
             $href = $r['link'] !== '' && !$preview ? link_href($r['link']) : '';
             $name = $href !== '' && $href !== '#' && $action !== 'none'
                 ? '<a href="' . e($href) . '"' . ($r['key'] === $active ? ' aria-current="true"' : '') . ext_attrs($r['link']) . '>' . e($r['name']) . '</a>'
@@ -274,29 +278,44 @@ final class Render
         }
         $pop = $action === 'info' ? '<div class="gk-pop" role="dialog" aria-modal="false" hidden data-gk-pop><button type="button" class="gk-pop__close" data-gk-close aria-label="' . e(lt('Schließen')) . '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13"/></svg></button><div class="gk-pop__body" data-gk-body></div></div>' : '';
 
-        return (($o['assets'] ?? true) ? self::assets($action === 'info') : '')
+        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs) : '')
             . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
             . $empty . '<div class="gk-map">' . $svg . $pop . '</div>'
             . '<figcaption class="gk-cap">' . $cap . '</figcaption></figure>';
     }
 
     /**
-     * Quellenvermerk der Kartendaten (HTML): „Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen, vereinfacht“ – BKG,
-     * Lizenz und Datenquellen verlinkt, wie es die Nutzungsbedingungen für die Darstellung auf Webseiten verlangen.
+     * Quellenvermerk der Kartendaten – eine Fassung für alle Stellen (unter jeder Karte, Vorschau, Kartendaten, SVG-Export,
+     * Mediathek), nach den Nutzungsbedingungen des BKG für VG250 (Stand 19.08.2025): „© BKG (Jahr) dl-de/by-2-0, Datenquellen“
+     * plus Veränderungshinweis. HTML: BKG, Lizenz und Datenquellen verlinkt (Pflicht für die Darstellung auf Webseiten):
+     * „Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen, vereinfacht“.
      */
     public static function sourceNote(array $map): string
     {
-        $a = Bases::attribution($map['base'], $map['level']);
+        return self::attributionHtml((string) $map['base'], (string) $map['level']);
+    }
+
+    public static function attributionHtml(string $base, string $level, string $class = 'gk-src'): string
+    {
+        $a = Bases::attribution($base, $level);
         $ln = fn(string $href, string $text): string => '<a href="' . e($href) . '" target="_blank" rel="noopener">' . e($text) . '</a>';
-        return '<p class="gk-src">' . e(lt('Kartengrundlage')) . ': © ' . $ln($a['providerUrl'], $a['provider']) . ' (' . e($a['year']) . ') '
+        return '<p class="' . e($class) . '">' . e(lt('Kartengrundlage')) . ': © ' . $ln($a['providerUrl'], $a['provider']) . ' (' . e($a['year']) . ') '
             . $ln($a['url'], $a['license']) . ', ' . $ln($a['sources'], lt('Datenquellen')) . ', ' . e(lt('vereinfacht')) . '</p>';
     }
 
-    /** Quellenvermerk als Text (SVG-Export, Mediathek) */
+    /**
+     * Quellenvermerk als Text – gleicher Wortlaut, Links als Adresse (SVG-Export, Mediathek, Grafik-Editor):
+     * „Kartengrundlage: © BKG (2026) dl-de/by-2-0, Datenquellen: https://sgx.geodatenzentrum.de/…, vereinfacht“
+     */
     public static function sourceText(array $map): string
     {
-        $a = Bases::attribution($map['base'], $map['level']);
-        return __('Kartengrundlage') . ': ' . $a['text'] . ', ' . __('Datenquellen') . ': ' . $a['sources'] . ', ' . __('vereinfacht');
+        return self::attributionText((string) $map['base'], (string) $map['level']);
+    }
+
+    public static function attributionText(string $base, string $level): string
+    {
+        $a = Bases::attribution($base, $level);
+        return lt('Kartengrundlage') . ': ' . $a['text'] . ', ' . lt('Datenquellen') . ': ' . $a['sources'] . ', ' . lt('vereinfacht');
     }
 
     /** Angaben eines Gebiets (Info-Fenster bzw. Liste) */
@@ -309,6 +328,27 @@ final class Render
         if (trim((string) $r['contact']) !== '') $h .= '<p class="gk-info__contact">' . nl2br(e(trim((string) $r['contact'])), false) . '</p>';
         if ($href !== '' && $href !== '#') $h .= '<p class="gk-info__more"><a href="' . e($href) . '"' . ext_attrs($r['link']) . '>' . e(lt('Mehr zu {name}', ['name' => $r['name']])) . '</a></p>';
         return $h . '</div>';
+    }
+
+    /**
+     * Farbe je Gebiet (Klasse, fill, Dunkel-Wert). Dunkel-Wert eigener Farben: Feld „im Dunkeln“ oder automatisch aus den
+     * Dunkel-Farben des Kits (Preview::kit(true), nur wenn nötig berechnet).
+     * @return array<string, array{class: string, fill: ?string, dark: ?string}>
+     */
+    public static function paints(array $regions): array
+    {
+        $out = [];
+        $kitDark = null;
+        foreach (array_values($regions) as $i => $r) {
+            $eff = Colors::effective((string) $r['color'], $i);
+            $dark = '';
+            if ($eff !== '' && $eff[0] === '#') {
+                $own = Colors::hex((string) ($r['color_dark'] ?? ''));
+                $dark = $own !== '' ? $own : Colors::dark($eff, $kitDark ??= Preview::kit(true));
+            }
+            $out[$r['key']] = Colors::paint($eff, $dark);
+        }
+        return $out;
     }
 
     private static function nameOf(array $regions, string $key): string
@@ -337,6 +377,8 @@ final class Render
     {
         self::$css = self::$js = false;
         self::$count = 0;
+        Colors::reset();
+        Preview::reset();
     }
 
     /**
@@ -349,10 +391,10 @@ final class Render
         $regions = Bound::regionsOf($map);
         $geo = self::geometry($map, $regions);
         $index = array_flip(array_column($regions, 'key'));
-        $h = $geo['h'] + 40;
+        $h = $geo['h'] + 50;
         $x = fn(string $s): string => htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
         $s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $geo['w'] . ' ' . $h . '" width="' . $geo['w'] . '" height="' . $h . '">'
-            . '<title>' . $x((string) $map['title']) . '</title>';
+            . '<title>' . $x((string) $map['title']) . '</title><desc>' . $x(self::sourceText($map)) . '</desc>';
         if ($geo['rest'] !== '') $s .= '<path id="rest" d="' . $geo['rest'] . '" fill="' . $kit['surface'] . '" stroke="' . $kit['bg'] . '" stroke-width="1" fill-rule="evenodd"/>';
         $s .= '<g id="gebiete">';
         foreach ($regions as $r) {
@@ -367,8 +409,13 @@ final class Render
             if (!isset($geo['labels'][$r['key']])) continue;
             $s .= '<text x="' . $geo['labels'][$r['key']][0] . '" y="' . $geo['labels'][$r['key']][1] . '">' . $x((string) $r['name']) . '</text>';
         }
-        $s .= '</g><text id="quelle" x="' . ($geo['w'] - 12) . '" y="' . ($h - 14) . '" font-family="system-ui, sans-serif" font-size="11" text-anchor="end" fill="' . $kit['muted'] . '">'
-            . $x(self::sourceText($map)) . '</text></svg>';
+        // Quellenvermerk: derselbe Wortlaut wie unter der Karte (Links als Adresse – der Grafik-Editor und <img> kennen keine Links),
+        // dazu Lizenz und Vermerk in <desc>; zweizeilig, damit er in die Breite passt
+        $a = Bases::attribution($map['base'], $map['level']);
+        $line1 = lt('Kartengrundlage') . ': ' . $a['text'] . ', ' . lt('vereinfacht');
+        $line2 = lt('Datenquellen') . ': ' . $a['sources'] . ' · ' . lt('Lizenz') . ': ' . $a['url'];
+        $s .= '</g><text id="quelle" x="' . ($geo['w'] - 12) . '" y="' . ($h - 24) . '" font-family="system-ui, sans-serif" font-size="11" text-anchor="end" fill="' . $kit['muted'] . '">'
+            . '<tspan x="' . ($geo['w'] - 12) . '">' . $x($line1) . '</tspan><tspan x="' . ($geo['w'] - 12) . '" dy="14">' . $x($line2) . '</tspan></text></svg>';
         return $s;
     }
 }

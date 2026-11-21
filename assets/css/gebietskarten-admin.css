@@ -28,6 +28,27 @@ html.adm-ui[data-theme="dark"] .gk-u.is-free, html.adm-ui[data-theme="dark"] .gk
 .gk-ed__side { display: grid; gap: 1rem; }
 .gk-ed__regions { margin: 0 0 .9rem; padding-left: 1.2rem; display: grid; gap: .3rem; }
 .gk-ed__regions a[aria-current] { font-weight: 700; }
+/* Reihenfolge: Greifer, Auf/Ab-Knöpfe, Ziehen */
+.gk-ed__regions[data-gk-sort] { list-style: none; padding-left: 0; gap: 0; border-top: 1px solid var(--adm-line); }
+.gk-ed__reg { display: flex; align-items: center; gap: .35rem; padding: .3rem .2rem; border-bottom: 1px solid var(--adm-line); background: var(--adm-surface); }
+.gk-ed__reg[draggable="true"] { cursor: grab; }
+.gk-ed__reg.is-dragging { opacity: .55; outline: 2px dashed var(--adm-accent, currentColor); outline-offset: -2px; }
+.gk-ed__grip { display: inline-flex; color: var(--adm-t2); flex: none; }
+.gk-ed__grip .ico { width: 1rem; height: 1rem; }
+.gk-ed__regname { flex: 1 1 auto; min-width: 0; }
+.gk-ed__move { display: inline-flex; gap: .15rem; flex: none; }
+.gk-ed__move .adm-btn { padding: .2rem .35rem; min-height: 0; }
+.gk-ed__move .adm-btn[disabled] { visibility: hidden; }
+.gk-ed__lock { display: block; font-size: .8125rem; color: var(--adm-t2); }
+.gk-ed__lock .ico, .gk-ed__note .ico { width: 1em; height: 1em; vertical-align: -.125em; }
+.gk-ed__note { font-size: .875rem; margin: 0 0 .75rem; }
+.gk-edsvg.is-readonly { cursor: default; }
+.gk-edsvg.is-readonly .gk-u:hover { filter: none; stroke: var(--adm-surface, #fff); stroke-width: .7; }
+.gk-u.is-locked { cursor: not-allowed; }
+/* Kontrast der Beschriftung */
+.gk-ed__contrast { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin: .25rem 0 .75rem; font-size: .875rem; color: var(--adm-t2); }
+.gk-ed__cpair { display: inline-flex; align-items: center; gap: .1rem; flex-wrap: wrap; }
+.gk-ed__cpair .adm-badge .ico { width: 1em; height: 1em; vertical-align: -.125em; }
 .gk-ed__new { display: flex; gap: .5rem; align-items: end; flex-wrap: wrap; }
 .gk-ed__new .f { flex: 1 1 10rem; margin: 0; }
 .gk-ed__ulist { list-style: none; margin: .5rem 0 0; padding: 0; max-height: 26rem; overflow: auto; border-top: 1px solid var(--adm-line); }
@@ -41,4 +62,7 @@ html.adm-ui[data-theme="dark"] .gk-u.is-free, html.adm-ui[data-theme="dark"] .gk
 .gk-prev-switch { display: flex; gap: .3rem; }
 .gk-prevbox { padding: 1.25rem; border-radius: 10px; border: 1px solid var(--adm-line); margin-top: .5rem; }
 .gk-prevbox .gk-src a, .gk-prevbox .gk-item a { color: var(--kit-accent); }
+/* Vorschau „Dunkel“: eigene Farben mit ihrem Dunkel-Wert (Render setzt --gk-d nur in der Verwaltung) */
+.gk-prevbox[data-scheme="dark"] .gk-c-own[style] path, .gk-prevbox[data-scheme="dark"] svg.gk-c-own[style] rect { fill: var(--gk-d); }
 .gk-adm-packs td:first-child { width: 2rem; }
+.gk-adm-src { font-weight: 600; }

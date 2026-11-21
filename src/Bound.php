@@ -19,7 +19,7 @@ use Core\Data\Tables;
  */
 final class Bound
 {
-    public const KEYS = ['table', 'units', 'name', 'color', 'link', 'text', 'image', 'contact', 'site'];
+    public const KEYS = ['table', 'units', 'name', 'color', 'color_dark', 'link', 'text', 'image', 'contact', 'site'];
 
     public static function cleanBinding(array $in): array
     {
@@ -65,7 +65,7 @@ final class Bound
         if (($map['source'] ?? 'own') !== 'table') return Repo::regions((int) $map['id']);
         $t = self::table($map);
         if (!$t) return [];
-        $b = $map['binding'];
+        $b = $map['binding'] + array_fill_keys(self::KEYS, '');
         $out = [];
         foreach (Entries::query($t, ['status' => 'published', 'limit' => 500]) as $i => $e) {
             $raw = $e[$b['units']] ?? '';
@@ -77,6 +77,7 @@ final class Bound
                 'id' => (int) $e['id'], 'key' => 'e' . (int) $e['id'], 'map_id' => (int) $map['id'],
                 'name' => $b['name'] !== '' ? trim(strip_tags((string) ($e[$b['name']] ?? ''))) ?: Entries::title($t, $e) : Entries::title($t, $e),
                 'color' => $b['color'] !== '' ? Colors::clean((string) ($e[$b['color']] ?? '')) : '',
+                'color_dark' => ($b['color_dark'] ?? '') !== '' ? Colors::hex((string) ($e[$b['color_dark']] ?? '')) : '',
                 'link' => $link,
                 'text' => $b['text'] !== '' ? Entries::html($t, $e, $b['text']) : '',
                 'media_id' => $b['image'] !== '' && (int) ($e[$b['image']] ?? 0) > 0 ? (int) $e[$b['image']] : null,

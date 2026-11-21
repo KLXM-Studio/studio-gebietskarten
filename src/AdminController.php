@@ -60,9 +60,20 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         $geo = Render::geometry($m, $regions, true);
         $table = $m['source'] === 'table' ? Bound::table($m) : null;
         $edit = (int) $r->str('gebiet');
+        // Datentabelle: Zuordnung per Klick nur mit Recht auf die Tabelle und schreibbarem Feld; je Eintrag die Regeln des Cores
+        $assignReason = $m['source'] === 'table' ? EntryAssign::mapReason($table, $m) : null;
+        $locked = [];
+        if ($table && $assignReason === null) {
+            foreach ($regions as $reg) {
+                $e = \Core\Data\Entries::find($table, (int) $reg['id']);
+                $why = $e ? EntryAssign::reason($table, $e) : __('Eintrag nicht gefunden.');
+                if ($why !== null) $locked[(int) $reg['id']] = $why;
+            }
+        }
         return Gebietskarten::page('edit', ['map' => $m, 'regions' => $regions, 'geo' => $geo, 'table' => $table, 'editRegion' => $edit,
             'tables' => self::tableOptions(), 'preview' => Render::html($m, ['preview' => true, 'assets' => false]),
-            'kitLight' => Preview::kit(false), 'kitDark' => Preview::kit(true)]);
+            'kitLight' => Preview::kit(false), 'kitDark' => Preview::kit(true), 'darkOn' => Preview::darkOn(),
+            'assignReason' => $assignReason, 'locked' => $locked]);
     }
 
     /** Datentabellen für die Bindung (ohne Eingangs-Tabellen) */
@@ -86,17 +97,31 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         return $this->to(Gebietskarten::ADMIN . '/' . $m['id'], 'success', __('Karte gespeichert.'));
     }
 
-    /** Zuordnung speichern: JSON {"regions": {"12": ["05170", …]}} (Editor) bzw. Formular units[12] = "05170, 05154" */
+    /**
+     * Zuordnung speichern: JSON {"regions": {"12": ["05170", …]}} (Editor) bzw. Formular units[12] = "05170, 05154".
+     * Eigene Karte: Gebiete dieser Erweiterung. Datentabelle: das Feld mit den Flächen in den Einträgen (EntryAssign – Rechte,
+     * Versionen und Protokoll des Cores); nicht änderbare Einträge melden einen Grund.
+     */
     public function assign(Request $r, string $id): Response
     {
         $m = $this->mapOr404($id);
-        if ($m['source'] === 'table') return Response::fail(__('Die Gebiete dieser Karte kommen aus einer Datentabelle.'), 422);
         $by = [];
         foreach ((array) ($r->post['regions'] ?? $r->post['units'] ?? []) as $rid => $list) $by[(int) $rid] = Repo::unitList(is_array($list) ? $list : (string) $list);
-        Repo::saveAssignment($m['id'], $by);
-        if ($r->wantsJson() || str_contains((string) ($r->server['CONTENT_TYPE'] ?? ''), 'json')) {
+        $json = $r->wantsJson() || str_contains((string) ($r->server['CONTENT_TYPE'] ?? ''), 'json');
+        if ($m['source'] === 'table') {
+            $res = EntryAssign::save($m, $by);
             $m = (array) Repo::map($m['id']);
-            return Response::json(['ok' => true, 'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);
+            $geo = Render::geometry($m, Bound::regionsOf($m), true);
+            $msg = $res['errors'] ? __('{n} Einträge gespeichert, nicht gespeichert: {list}', ['n' => $res['saved'], 'list' => implode(' · ', $res['errors'])])
+                : ($res['saved'] === 1 ? __('1 Eintrag gespeichert.') : __('{n} Einträge gespeichert.', ['n' => $res['saved']]));
+            if ($json) return Response::json(['ok' => !$res['errors'], 'saved' => $res['saved'], 'errors' => array_values($res['errors']), 'message' => $msg,
+                'owner' => (object) $geo['owner'], 'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);
+            return $this->to(Gebietskarten::ADMIN . '/' . $m['id'], $res['errors'] ? 'error' : 'success', $msg);
+        }
+        Repo::saveAssignment($m['id'], $by);
+        if ($json) {
+            $m = (array) Repo::map($m['id']);
+            return Response::json(['ok' => true, 'message' => __('Zuordnung gespeichert.'), 'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);
         }
         return $this->to(Gebietskarten::ADMIN . '/' . $m['id'], 'success', __('Zuordnung gespeichert.'));
     }
@@ -109,6 +134,7 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         $rid = (int) ($in['id'] ?? 0);
         if ($rid && !($reg = Repo::region($rid)) || ($rid && $reg['map_id'] !== $m['id'])) throw new HttpException(404);
         if (($in['color'] ?? '') === 'own') $in['color'] = (string) ($in['own_color'] ?? '');
+        else $in['color_dark'] = '';
         // Link über die Core-Linkauswahl (Fields, Typ link): page:ID, entry:…, /pfad oder https://…
         [$vals, $errs] = \Core\Fields::sanitize([['name' => 'link', 'type' => 'link'], ['name' => 'text', 'type' => 'richtext'], ['name' => 'media_id', 'type' => 'media']], $in);
         if (isset($errs['link'])) $vals['link'] = '';
@@ -125,11 +151,21 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         return $this->to(Gebietskarten::ADMIN . '/' . $m['id'] . '#gk-gebiete', 'success', __('Gebiet gelöscht.'));
     }
 
+    /** Reihenfolge der Gebiete (Ziehen, Auf/Ab-Knöpfe, Alt+Pfeil): ids[] in neuer Folge. JSON: neue Farben (Palette folgt der Position) und Vorschau */
     public function reorder(Request $r, string $id): Response
     {
         $m = $this->mapOr404($id);
+        if ($m['source'] === 'table') return Response::fail(__('Die Reihenfolge der Gebiete aus einer Datentabelle folgt der Tabelle.'), 422);
         Repo::reorder($m['id'], array_map('intval', (array) ($r->post['ids'] ?? [])));
-        return $r->wantsJson() ? Response::json(['ok' => true]) : $this->to(Gebietskarten::ADMIN . '/' . $m['id'], 'success', __('Reihenfolge gespeichert.'));
+        if (!$r->wantsJson() && !str_contains((string) ($r->server['CONTENT_TYPE'] ?? ''), 'json')) {
+            return $this->to(Gebietskarten::ADMIN . '/' . $m['id'] . '#gk-gebiete', 'success', __('Reihenfolge gespeichert.'));
+        }
+        $regions = Repo::regions($m['id']);
+        $kit = Preview::kit(false);
+        $colors = [];
+        foreach ($regions as $i => $reg) $colors[(string) $reg['id']] = Colors::approx(Colors::effective($reg['color'], $i), $kit);
+        return Response::json(['ok' => true, 'order' => array_map(fn($x) => $x['id'], $regions), 'colors' => (object) $colors,
+            'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);
     }
 
     public function delete(Request $r, string $id): Response

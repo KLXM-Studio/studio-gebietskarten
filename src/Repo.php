@@ -12,7 +12,7 @@ use Core\Db\Table;
  *
  * Karte: Titel, Grundlage (de), Ebene (laender|kreise|gemeinden), Ausschnitt (Länder, leer = alle), Quelle der Gebiete
  * ('own' = hier gepflegt, 'table' = aus einer Datentabelle, siehe Bound) und Darstellung (options, JSON).
- * Gebiet: Name, Farbe (Token oder #RRGGBB), Link (Core-Linkauswahl, z. B. page:12), Infotext (Rich-Text), Bild (Mediathek),
+ * Gebiet: Name, Farbe (Token oder #RRGGBB, eigene Farbe optional mit Wert „im Dunkeln“), Link (Core-Linkauswahl, z. B. page:12), Infotext (Rich-Text), Bild (Mediathek),
  * Kontakt (mehrzeilig), Einheiten (AGS, kommagetrennt) und Reihenfolge.
  */
 final class Repo
@@ -46,6 +46,7 @@ final class Repo
                 ->column('map_id', 'int', ['null' => false])
                 ->column('name', 'string', ['length' => 160, 'null' => false, 'default' => ''])
                 ->column('color', 'string', ['length' => 16, 'default' => ''])
+                ->column('color_dark', 'string', ['length' => 16, 'default' => ''])      // 0.2.0: eigene Farbe im Dunkeln (leer = automatisch)
                 ->column('link', 'string', ['length' => 191, 'default' => ''])
                 ->column('text', 'text')
                 ->column('media_id', 'int')
@@ -132,7 +133,7 @@ final class Repo
     private static function decodeRegion(array $r): array
     {
         return ['id' => (int) $r['id'], 'key' => 'r' . (int) $r['id'], 'map_id' => (int) $r['map_id'], 'name' => (string) $r['name'],
-            'color' => Colors::clean((string) $r['color']), 'link' => (string) $r['link'], 'text' => (string) ($r['text'] ?? ''),
+            'color' => Colors::clean((string) $r['color']), 'color_dark' => Colors::hex((string) ($r['color_dark'] ?? '')), 'link' => (string) $r['link'], 'text' => (string) ($r['text'] ?? ''),
             'media_id' => $r['media_id'] !== null ? (int) $r['media_id'] : null, 'contact' => (string) ($r['contact'] ?? ''),
             'units' => self::unitList((string) ($r['units'] ?? '')), 'sort' => (int) $r['sort'], 'entry' => null];
     }
@@ -156,6 +157,8 @@ final class Repo
         $row = [
             'name' => mb_substr(trim((string) ($in['name'] ?? '')), 0, 160) ?: __('Neues Gebiet'),
             'color' => Colors::clean((string) ($in['color'] ?? '')),
+            // Dunkel-Wert nur zu einer eigenen Farbe
+            'color_dark' => str_starts_with(Colors::clean((string) ($in['color'] ?? '')), '#') ? Colors::hex((string) ($in['color_dark'] ?? '')) : '',
             'link' => mb_substr(trim((string) ($in['link'] ?? '')), 0, 191),
             'text' => \Core\Sanitizer::block((string) ($in['text'] ?? '')),
             'media_id' => ($mid = (int) ($in['media_id'] ?? 0)) > 0 ? $mid : null,

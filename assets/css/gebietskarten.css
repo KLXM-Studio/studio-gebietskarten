@@ -1,0 +1,91 @@
+/*
+ * Gebietskarten (Erweiterung gebietskarten) – Website. Farben nur aus dem Kit-Vertrag (--kit-*) mit Rückfall, eigene Variablen
+ * mit Präfix --gk-* (Kits steuern über sie nach). Hell/dunkel folgt den Kit-Farben; keine style-Attribute im HTML.
+ */
+.gk {
+  --gk-bg: var(--kit-bg, Canvas);
+  --gk-ink: var(--kit-ink, CanvasText);
+  --gk-muted: var(--kit-muted, GrayText);
+  --gk-edge: var(--kit-bg, Canvas);
+  --gk-rest: color-mix(in oklab, var(--kit-line, #c5ccd3) 55%, var(--kit-bg, Canvas));
+  --gk-c: var(--kit-surface, #e6eaee);
+  --gk-focus: var(--kit-ink, CanvasText);
+  --gk-dim: .42;
+  margin: 0;
+}
+.gk-map { position: relative; }
+.gk-svg { display: block; width: 100%; height: auto; max-height: 85vh; }
+.gk-rest { fill: var(--gk-rest); stroke: var(--gk-edge); stroke-width: .8; }
+.gk-area path { stroke: var(--gk-edge); stroke-width: 1.4; stroke-linejoin: round; transition: fill-opacity .15s, filter .15s; }
+.gk-area:not(.gk-c-own) path { fill: var(--gk-c); }
+a.gk-area { cursor: pointer; outline: none; }
+a.gk-area:hover path { filter: brightness(.9) saturate(1.15); }
+a.gk-area:focus-visible { outline: 3px solid var(--gk-focus); outline-offset: 3px; }
+a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-dasharray: 8 4; }
+.gk-area.is-active path { stroke: var(--gk-ink); stroke-width: 2.5; }
+.gk--focus .gk-area:not(.is-active):not(:hover):not(:focus-visible) path { fill-opacity: var(--gk-dim); }
+.gk-lines { fill: none; stroke: var(--gk-edge); stroke-width: .6; stroke-opacity: .75; pointer-events: none; }
+.gk-labels text {
+  font: 700 18px/1 var(--kit-font, system-ui, sans-serif); fill: var(--gk-ink); stroke: var(--gk-bg); stroke-width: 4px;
+  stroke-linejoin: round; paint-order: stroke; text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.gk-labels text.is-active { font-weight: 800; }
+
+/* Farben: Design (Kit-Vertrag) und Palette (Okabe-Ito, mit dem Hintergrund gemischt – hell wie dunkel ruhig) */
+.gk-c-accent { --gk-c: var(--kit-accent, #2f6f8f); }
+.gk-c-accent-soft { --gk-c: color-mix(in oklab, var(--kit-accent, #2f6f8f) 45%, var(--kit-bg, Canvas)); }
+.gk-c-accent-deep { --gk-c: color-mix(in oklab, var(--kit-accent, #2f6f8f) 70%, var(--kit-ink, CanvasText)); }
+.gk-c-surface { --gk-c: var(--kit-surface, #e6eaee); }
+.gk-c-muted { --gk-c: color-mix(in oklab, var(--kit-muted, #6b7280) 45%, var(--kit-bg, Canvas)); }
+.gk-c-p1 { --gk-c: color-mix(in oklab, #e69f00 78%, var(--kit-bg, Canvas)); }
+.gk-c-p2 { --gk-c: color-mix(in oklab, #56b4e9 78%, var(--kit-bg, Canvas)); }
+.gk-c-p3 { --gk-c: color-mix(in oklab, #009e73 78%, var(--kit-bg, Canvas)); }
+.gk-c-p4 { --gk-c: color-mix(in oklab, #f0e442 78%, var(--kit-bg, Canvas)); }
+.gk-c-p5 { --gk-c: color-mix(in oklab, #0072b2 78%, var(--kit-bg, Canvas)); }
+.gk-c-p6 { --gk-c: color-mix(in oklab, #d55e00 78%, var(--kit-bg, Canvas)); }
+.gk-c-p7 { --gk-c: color-mix(in oklab, #cc79a7 78%, var(--kit-bg, Canvas)); }
+.gk-c-p8 { --gk-c: color-mix(in oklab, #999999 78%, var(--kit-bg, Canvas)); }
+
+/* Liste der Gebiete (Legende, Alternative zur Karte) */
+.gk-cap { margin: 0; }
+.gk-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); gap: .35rem 1.25rem; }
+.gk-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; }
+.gk-swatch { width: .85em; height: .85em; flex: none; align-self: center; }
+.gk-swatch:not(.gk-c-own) rect { fill: var(--gk-c); }
+.gk-item.is-active > a, .gk-item.is-active > span { font-weight: 700; }
+.gk-item__n { color: var(--gk-muted); font-size: .875em; }
+.gk-item .gk-info { display: none; }
+.gk-item:target .gk-info { display: block; }
+.gk-sr > .gk-item:not(:target), .gk-sr:not(:has(.gk-item:target)) {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.gk-sr:has(.gk-item:target) { display: block; }
+.gk-info { flex-basis: 100%; margin: .35rem 0 .6rem; padding: .75rem .9rem; border: 1px solid var(--kit-line, #d0d6dd); border-radius: var(--kit-radius, 8px); background: var(--kit-surface, transparent); }
+.gk-info__title { margin: 0 0 .35rem; font-weight: 700; color: var(--gk-ink); }
+.gk-info__img { display: block; width: 100%; height: auto; margin: 0 0 .5rem; border-radius: calc(var(--kit-radius, 8px) * .6); }
+.gk-info__text > :first-child { margin-top: 0; }
+.gk-info__text > :last-child, .gk-info__more { margin-bottom: 0; }
+.gk-info__contact { margin: .4rem 0; }
+.gk-src { margin: .6rem 0 0; font-size: .8125rem; color: var(--gk-muted); }
+.gk-src a { color: inherit; }
+.gk-note { margin: 0 0 .75rem; padding: .6rem .8rem; border: 1px dashed var(--kit-line, #c5ccd3); border-radius: var(--kit-radius, 6px); color: var(--gk-muted); }
+.gk-block__title { margin-bottom: .75rem; }
+
+/* Info-Fenster (gebietskarten.js, nur bei „Info-Fenster zeigen“) */
+.gk-pop {
+  position: absolute; z-index: 3; width: min(22rem, calc(100% - 1rem)); max-height: min(70vh, 32rem); overflow: auto;
+  background: var(--gk-bg); color: var(--kit-text, var(--gk-ink)); border: 1px solid var(--kit-line, #c5ccd3);
+  border-radius: var(--kit-radius, 8px); box-shadow: 0 10px 30px rgb(0 0 0 / .2); padding: .9rem 2.6rem .9rem 1rem;
+}
+.gk-pop[hidden] { display: none; }
+.gk-pop .gk-info { display: block; margin: 0; padding: 0; border: 0; background: none; }
+.gk-pop .gk-info__title { font-size: 1.05em; }
+.gk-pop__close {
+  position: absolute; top: .4rem; right: .4rem; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--gk-ink); cursor: pointer;
+}
+.gk-pop__close:hover { background: color-mix(in oklab, var(--gk-ink) 10%, transparent); }
+.gk-pop__close:focus-visible { outline: 2px solid var(--gk-focus); outline-offset: 1px; }
+.gk-pop__close svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+@media (prefers-reduced-motion: reduce) { .gk-area path { transition: none; } }

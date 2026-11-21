@@ -4,8 +4,23 @@ Flächen einer freien Kartengrundlage zu **Gebieten** zusammenfassen und auf der
 die Kreise eines Verbands, Vertriebsgebiete. Je Gebiet: Name, Farbe, Link, Infotext, Bild und Kontakt. Ausgabe als
 serverseitig gerendertes, zugängliches SVG ohne Kartenbibliothek, ohne Kacheln und ohne Anfragen an Dritte.
 
+<img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/01-website-hell.webp" alt="Gebietskarte auf einer Website" width="100%">
+
+
 Gebietskarten sind **keine Straßenkarten**: Für Standorte, Adressen und Zoomen gibt es die Karten des Cores (`Core\Maps`, MapLibre).
 Hier geht es nur um Flächen und ihre Zuordnung.
+
+## Bildschirmfotos
+
+| | |
+|---|---|
+| <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/01-website-hell.webp" alt="Gebietskarte auf der Website, hell" width="100%"><br>Website, hell | <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/02-website-dunkel.webp" alt="Gebietskarte auf der Website, dunkel" width="100%"><br>Website, dunkel |
+| <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/03-info-fenster.webp" alt="Info-Fenster eines Gebiets" width="100%"><br>Info-Fenster eines Gebiets | <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/04-gebiet-hervorgehoben-dunkel.webp" alt="Ein Gebiet hervorgehoben, dunkel" width="100%"><br>Ein Gebiet hervorgehoben |
+| <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/05-gebiete-bilden.webp" alt="Gebiete bilden in der Verwaltung" width="100%"><br>Gebiete bilden – Klick auf die Karte oder Liste | <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/06-angaben-je-gebiet.webp" alt="Angaben je Gebiet" width="100%"><br>Angaben je Gebiet: Farbe, Link, Infotext, Bild, Kontakt |
+| <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/07-kartendaten-nachladen.webp" alt="Kartendaten nachladen" width="100%"><br>Gemeinden je Bundesland nachladen | <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/08-gemeinden-saarland.webp" alt="Gemeinden des Saarlands" width="100%"><br>Karte aus Gemeinden (Saarland) |
+| <img src="https://raw.githubusercontent.com/KLXM-Studio/studio-gebietskarten/assets/screenshots/09-grafik-editor.webp" alt="Karte im Grafik-Editor" width="100%"><br>Als Grafik weiterbearbeiten (Paket klxm/studio-grafik) | |
+
+Kartengrundlage in allen Bildern: © BKG (2026) dl-de/by-2-0, vereinfacht. Personen und Adressen sind erfunden.
 
 ## Installation
 

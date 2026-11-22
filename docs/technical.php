@@ -189,3 +189,12 @@ $svg = Render::svg(Repo::map(3));                                               
     „Automatisch neu setzen“, Größe nach Fläche, Ton und Kontrast, Hinweislinie, Etikett, Zeilenumbruch, Telefon-Regel, Editor-Auszeichnung, Export,
     Text aus Datentabellen; seit 0.4.0 Darstellung: Bereinigen, Bestandskarten ohne neue Auszeichnung, Hover dezent/animiert (Pole, Hüllen, Skript),
     Schatten im Dunkeln, Pills mit Maßen, Radius, Kontrast und Telefon-Skalierung, Töne der Akzentfarbe mit Nachbarn verschieden und Kontrast).</p>
+  <p><b>Website-Vorlagen</b> (seit 0.7.0, <code>Blueprint</code>): Filter des Cores (<code>Core\Blueprint</code>). <code>blueprint.source</code> meldet die
+    Region der Quelle aus dem Ausschnitt der ersten Karte mit genau einem Land (Texte mit „NRW“ & Co. werden Platzhalter). <code>blueprint.export</code>:
+    Abschnitt <code>gebietskarten</code> mit den Zeilen von <code>gebietskarten_maps</code> und <code>gebietskarten_regions</code> (Kontakt leer, Bild <code>null</code>).
+    <code>blueprint.apply</code>: Zeilen mit ihren IDs (Blöcke verweisen auf die Karte), nur in eine Website ohne Karten, danach Platzhalter in Titel, Namen,
+    Infotext (<code>Core\Blueprint\Placeholders::fill</code> mit <code>ctx.values</code>). <code>blueprint.region</code> (Schnelleinrichtung, Gebiet; <code>ctx.code</code> =
+    Landesschlüssel): Ausschnitt jeder Karte mit Kreisen bzw. Gemeinden auf das Land, je Gebiet <code>Blueprint::EXAMPLE_UNITS</code> Flächen
+    (eigene Gebiete über <code>Repo::saveAssignment</code>, Datentabellen über <code>EntryAssign::save</code>), Rückgabe je Karte
+    <code>[&#39;task&#39; =&gt; &#39;Gebiete zuordnen: …&#39;, &#39;link&#39; =&gt; &#39;/admin/gebietskarten/{id}&#39;]</code> – der Core legt daraus eine Aufgabe an. Selbsttest: Abschnitt
+    „Website-Vorlagen“ (nur in einer Website ohne Karten).</p>

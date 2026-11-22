@@ -28,13 +28,13 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.6.0',
+    'version' => '0.7.0',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
     'license' => 'MIT',
     'provides' => ['Menüpunkt „Gebietskarten“ (Karten, Gebiete, Kartendaten)', 'Block „Gebietskarte“', 'Recht „Gebietskarten bearbeiten“',
-        'Befehle gebietskarten:daten und gebietskarten:selftest'],
+        'Befehle gebietskarten:daten und gebietskarten:selftest', 'Website-Vorlagen: Karten mitnehmen, Gebiet der neuen Website'],
     'commands' => ['gebietskarten:daten', 'gebietskarten:data', 'gebietskarten:selftest'],
     'usage' => function (): ?string {
         try {
@@ -84,6 +84,11 @@ return [
         if (\Core\Filters::known('data.nearby')) $x->filter('data.nearby', fn(array $v, array $ctx): ?array => Klxm\Gebietskarten\Nearby::resolve($v, $ctx));
         // … und Kartenpunkt eines Gebiets ohne Kartenfeld (Mitte der Flächen), damit Nachbargebiete in den Umkreis kommen (Core ab data.nearby_point)
         if (\Core\Filters::known('data.nearby_point')) $x->filter('data.nearby_point', fn(mixed $v, array $ctx): ?array => $v ?? Klxm\Gebietskarten\Nearby::pointOf((string) ($ctx['table'] ?? ''), (int) ($ctx['id'] ?? 0)));
+
+        // Website-Vorlagen des Cores (Core\Blueprint): Karten mitnehmen, Region der Quelle melden, Ausschnitt der neuen Region setzen
+        foreach (['blueprint.source' => 'source', 'blueprint.export' => 'export', 'blueprint.apply' => 'apply', 'blueprint.region' => 'region'] as $f => $fn) {
+            if (\Core\Filters::known($f)) $x->filter($f, fn(mixed $v, array $ctx): ?array => Klxm\Gebietskarten\Blueprint::$fn($v, $ctx));
+        }
 
         $x->health(function (): array {
             if (!G::on()) return [];

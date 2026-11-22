@@ -1,5 +1,16 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.7.0 (2026-11-22)
+
+- **Website-Vorlagen des Cores** (`Core\Blueprint`, Filter `blueprint.*`): Karten und Gebiete gehen mit einer Vorlage mit (ohne
+  Ansprechpersonen und Bilder) und behalten ihre IDs, damit Blöcke „Gebietskarte“ weiter passen.
+- **Gebiet der neuen Website:** Wählt sie in der Schnelleinrichtung ihr Land (z. B. Hessen bzw. Schlüssel `06`), zeigt jede Karte mit Kreisen
+  oder Gemeinden das neue Land; die Beispiel-Gebiete bekommen je zwei Kreise, der Rest bleibt grau. Je Karte entsteht eine Aufgabe
+  „Gebiete zuordnen“ mit Link auf die Karte. Platzhalter der Vorlage in Titeln, Namen und Infotexten werden gefüllt.
+- **Region der Quelle:** Der Ausschnitt der Karte meldet dem Export das Land der Quelle – so werden „NRW“ und „Nordrhein-Westfalen“ in Texten
+  zu Platzhaltern.
+- Selbsttest „Website-Vorlagen“ (Export, Quelle, Regionswechsel, Platzhalter, Aufgabe).
+
 ## 0.6.0 (2026-11-22)
 
 - **Mitte eines Gebiets als Kartenpunkt** (Filter `data.nearby_point` des Cores): Einträge ohne Kartenfeld, die Gebiet einer Karte mit

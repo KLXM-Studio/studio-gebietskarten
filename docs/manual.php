@@ -151,3 +151,8 @@
     Gemeindenamen (z. B. Gevelsberg) findet die Karte erst mit den Gemeindedaten der Länder – der Editor einer Karte mit Datentabelle bietet dafür
     „Gemeindedaten laden“ an. Gruppen ohne eigenen Kartenpunkt nehmen für den Umkreis die Mitte ihres Gebiets – so erscheinen nach der zuständigen
     auch die Nachbargruppen.</p>
+
+  <h3 id="gebietskarten-vorlagen">Website-Vorlagen</h3>
+  <p>Legt die Netzwerk-Verwaltung aus einer Website eine Website-Vorlage an, gehen die Karten und ihre Gebiete mit – ohne Ansprechpersonen und
+    Bilder. Wählt die neue Website in der Schnelleinrichtung ihr Gebiet (z. B. Hessen), zeigt jede Karte mit Kreisen bzw. Gemeinden das neue
+    Land; die Beispiel-Gebiete bekommen je zwei Kreise, der Rest bleibt grau. Eine Aufgabe „Gebiete zuordnen“ führt zur Karte.</p>

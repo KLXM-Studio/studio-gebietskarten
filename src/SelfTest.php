@@ -70,8 +70,38 @@ final class SelfTest
         self::entryAssign();
         echo "Nachladen (Prüfsumme)\n";
         self::packs();
+        echo "Website-Vorlagen (Filter blueprint.* des Cores)\n";
+        self::blueprint();
         printf("\n%d bestanden, %d fehlgeschlagen\n", self::$ok, self::$fail);
         return self::$fail ? 1 : 0;
+    }
+
+    /**
+     * Website-Vorlagen: Export ohne Kontakt/Bild, Region der Quelle aus dem Ausschnitt, Regionswechsel NRW → Hessen mit Beispiel-Flächen,
+     * Aufgabe „Gebiete zuordnen“, Platzhalter im Titel. Mit einer vorübergehenden Karte (wird entfernt) – nur in einer Website ohne
+     * Karten, damit vorhandene Karten unberührt bleiben.
+     */
+    private static function blueprint(): void
+    {
+        if (Repo::maps()) { echo "  – Website hat schon Karten – Test der Vorlagen übersprungen (nur in einer Website ohne Karten)\n"; return; }
+        $id = Repo::saveMap(null, ['title' => 'Gruppen in {{region.short}}', 'level' => 'kreise', 'scope' => ['05'], 'source' => 'own']);
+        try {
+            $a = Repo::saveRegion($id, null, ['name' => 'Gruppe A', 'contact' => 'Erika Musterfrau, 030 1234567', 'units' => '05170,05154']);
+            Repo::saveRegion($id, null, ['name' => 'Gruppe B', 'units' => '05111']);
+            $exp = (array) Blueprint::export([], []);
+            $reg = array_values(array_filter((array) ($exp[Gebietskarten::NAME]['regions'] ?? []), fn($r) => (int) $r['id'] === $a));
+            self::t(($reg[0]['contact'] ?? 'x') === '' && array_key_exists('media_id', $reg[0] ?? []) && $reg[0]['media_id'] === null && count((array) $exp[Gebietskarten::NAME]['maps']) === 1,
+                'Export: Karte und Gebiete, ohne Kontakt und Bild');
+            self::t(((array) Blueprint::source([], []))['region'] === '05', 'Region der Quelle aus dem Ausschnitt (05)');
+            $lines = (array) Blueprint::region([], ['region' => 'Hessen', 'code' => '06', 'values' => ['region.short' => 'Hessen']]);
+            $map = Repo::map($id);
+            $units = array_merge(...array_map(fn($r) => $r['units'], Repo::regions($id)));
+            self::t(($map['scope'] ?? []) === ['06'] && count($units) === 4 && !array_filter($units, fn($u) => !str_starts_with((string) $u, '06')), 'Regionswechsel: Ausschnitt Hessen, Beispiel-Flächen nur aus Hessen', implode(',', $units));
+            self::t((string) ($map['title'] ?? '') === 'Gruppen in Hessen', 'Platzhalter im Titel gefüllt', (string) ($map['title'] ?? ''));
+            self::t((bool) array_filter($lines, fn($l) => is_array($l) && str_starts_with((string) ($l['task'] ?? ''), 'Gebiete zuordnen') && str_contains((string) ($l['link'] ?? ''), (string) $id)), 'Aufgabe „Gebiete zuordnen“ mit Link auf die Karte');
+        } finally {
+            Repo::deleteMap($id);
+        }
     }
 
     /** Vier Quadrate mit gemeinsamen Bögen: Verschmelzen ergibt einen Ring, die Fläche bleibt gleich */

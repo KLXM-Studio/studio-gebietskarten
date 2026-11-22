@@ -332,4 +332,5 @@ return [
     'Gebietskarte „{title}“: Ausschnitt {region}, {n} Gebiete mit Beispiel-Flächen.' => 'Area map “{title}”: extent {region}, {n} areas with example units.',
     'Gebietskarten: Die Website hat schon Karten – nichts übernommen.' => 'Area maps: the website already has maps – nothing imported.',
     'Gebietskarten: {maps} Karten, {regions} Gebiete übernommen.' => 'Area maps: {maps} maps, {regions} areas imported.',
+    'Gebietskarte: Verweise auf umbenannte Gebiete' => 'Area map: references to renamed areas',
 ];

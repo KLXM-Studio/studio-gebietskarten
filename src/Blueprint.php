@@ -44,6 +44,8 @@ final class Blueprint
         $sections = is_array($sections) ? $sections : [];
         $maps = app()->db->fetchAll('SELECT * FROM ' . Repo::MAPS . ' ORDER BY id');
         if (!$maps) return null;
+        // Beschriftungen je Gebiet (Text, Lage) gehören zu den Flächen der Quelle – bei anonymen Demoinhalten weg, die Standardbeschriftung greift
+        if (($ctx['demo'] ?? 'anonym') !== 'full') foreach ($maps as $i => $m) $maps[$i]['labels'] = '{}';
         $regions = [];
         $labels = self::ownLabels();
         foreach (app()->db->fetchAll('SELECT * FROM ' . Repo::REGIONS . ' ORDER BY map_id, sort, id') as $r) {
@@ -159,6 +161,21 @@ final class Blueprint
         }
     }
 
+    /**
+     * Ortsnamen aus einem Namen: ganz und in Teilen – „Rhein-Sieg/Bonn“ → Rhein-Sieg, Bonn, Rhein, Sieg; „Offenbach am Main, Stadt“ →
+     * Offenbach am Main. Teile unter vier Zeichen und Zusätze (Kreis, Stadt, Land …) zählen nicht. @return list<string>
+     */
+    public static function nameParts(string $name): array
+    {
+        $out = [];
+        foreach (preg_split('~\s*(?:/|,|;|\bund\b|&)\s*~u', trim($name)) ?: [] as $p) {
+            $p = trim((string) preg_replace('~^(?:Regionalgruppe|Gruppe|Gebiet|Kreis|Landkreis|Stadt|Region)\s+~u', '', trim($p)));
+            if (mb_strlen($p) >= 4) $out[] = $p;
+            if (str_contains($p, '-')) foreach (explode('-', $p) as $q) if (mb_strlen($q) >= 4 && !preg_match('~^(?:Kreis|Stadt|Land|Landkreis|Region)$~iu', $q)) $out[] = $q;
+        }
+        return array_values(array_unique(array_filter($out, fn($p) => !preg_match('~^(?:Kreis|Stadt|Nord|Mitte|Süd|West|Ost)$~iu', $p))));
+    }
+
     /** Einzahl einer Tabelle („Regionalgruppe“) – Feld singular, sonst der Name */
     private static function singular(array $t): string
     {
@@ -174,7 +191,8 @@ final class Blueprint
 
     /**
      * Filter blueprint.areas (Export und Probelauf): Ortsnamen der Quell-Region, gebundene Flächen-Felder, neutrale Namen.
-     * @return array{places: list<string>, fields: list<string>, entries: array<string, array{field: string, labels: array<int, string>}>, rename: array<string, string>}
+     * Neutrale Namen ersetzt der Core nur an echten Verweisen (Core\Blueprint\References) – Namen im Fließtext meldet die Prüfung (places).
+     * @return array{places: list<string>, fields: list<string>, entries: array<string, array{field: string, singular: string, labels: array<int, string>}>}
      */
     public static function areas(mixed $v, array $ctx): ?array
     {
@@ -185,19 +203,13 @@ final class Blueprint
         $places = (array) ($v['places'] ?? []);
         $fields = (array) ($v['fields'] ?? []);
         $entries = (array) ($v['entries'] ?? []);
-        $rename = (array) ($v['rename'] ?? []);
         foreach ($maps as $m) {
             // Kreise und kreisfreie Städte des Ausschnitts (auch bei Karten auf Gemeinde-Ebene – Gemeindenamen wären zu viele Fehlalarme)
             if ($m['level'] !== 'laender') {
-                foreach (self::unitsOf($m, 'kreise') as $u) {
-                    $name = trim(explode(',', (string) $u['name'])[0]);
-                    if (mb_strlen($name) >= 4) $places[] = $name;
-                }
+                foreach (self::unitsOf($m, 'kreise') as $u) array_push($places, ...self::nameParts((string) $u['name']));
             }
             if (($m['source'] ?? 'own') !== 'table') {
-                foreach (Repo::regions((int) $m['id']) as $r) if (mb_strlen(trim((string) $r['name'])) >= 4) $places[] = trim((string) $r['name']);
-                $labels = self::ownLabels();
-                foreach (Repo::regions((int) $m['id']) as $r) if (isset($labels[(int) $r['id']]) && trim((string) $r['name']) !== '') $rename[trim((string) $r['name'])] = $labels[(int) $r['id']];
+                foreach (Repo::regions((int) $m['id']) as $r) array_push($places, ...self::nameParts((string) $r['name']));
                 continue;
             }
             $t = Bound::table($m);
@@ -215,11 +227,11 @@ final class Blueprint
             $labels = [];
             foreach (self::bandLabels($lat) as $id => $band) {
                 $labels[$id] = self::singular($t) . ' ' . $band;
-                if (mb_strlen(trim($names[$id])) >= 4) { $places[] = trim($names[$id]); $rename[trim($names[$id])] = $labels[$id]; }
+                array_push($places, ...self::nameParts($names[$id]));
             }
             if ($tf !== '') $entries[$t['handle']] = ['field' => $tf, 'labels' => $labels, 'singular' => self::singular($t)];
         }
-        return ['places' => array_values(array_unique($places)), 'fields' => array_values(array_unique($fields)), 'entries' => $entries, 'rename' => $rename] + $v;
+        return ['places' => array_values(array_unique($places)), 'fields' => array_values(array_unique($fields)), 'entries' => $entries] + $v;
     }
 
     /**
@@ -263,13 +275,8 @@ final class Blueprint
                 if ($old !== $new) {
                     $in[$tf] = $new;
                     $in['slug'] = \Core\Pages::slugify($new);
-                    // Nennungen im Eintrag (Rolle „Ansprechperson Regionalgruppe Nord“, Texte, Blöcke)
-                    foreach (Tables::dataFields($t['fields']) as $f) {
-                        $c = (string) $f['name'];
-                        if ($c === $tf || $c === $field['name'] || !is_string($e[$c] ?? null) || !str_contains((string) $e[$c], $old)) continue;
-                        $in[$c] = str_replace($old, $new, (string) $e[$c]);
-                    }
-                    $rename[$old] = $new;
+                    $rename[] = ['handle' => (string) $t['handle'], 'id' => (int) $id, 'old' => $old, 'new' => $new, 'slug_old' => (string) ($e['slug'] ?? ''),
+                        'slug_new' => $in['slug'], 'prefix' => self::singular($t)];
                 }
             }
             [$sid, $errs] = Entries::save($t, (int) $id, $in, __('Gebietskarte „{title}“: Beispiel-Flächen der neuen Region', ['title' => $map['title']]));
@@ -277,32 +284,91 @@ final class Blueprint
             $saved++;
             if (isset($in[$tf]) && $tf !== '') $renamed++;
         }
-        if ($rename) self::renamePages($rename);
+        if ($rename) self::relink($t, $rename, [$tf, $field['name']]);
         return ['saved' => $saved, 'renamed' => $renamed, 'errors' => $errors];
     }
 
-    /** Neue Namen der Demo-Gebiete auch in Seiten (Titel, Inhalte) – längste zuerst, nur ganze Wörter @param array<string, string> $map */
-    private static function renamePages(array $map): void
+    /**
+     * Neue Namen der Demo-Gebiete an echten Verweisen nachziehen (Core\Blueprint\References): Links auf den Eintrag (Linktext, Adresse),
+     * Linkfelder mit Beschriftung, Werte genau gleich dem Namen – in Seiten und in den Einträgen der Tabelle. Fließtext bleibt.
+     * @param list<array> $refs @param list<string> $skip Felder, die nicht angefasst werden (Titel, Flächen)
+     */
+    private static function relink(array $t, array $refs, array $skip): void
     {
-        uksort($map, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
-        $re = '~(?<![\p{L}\d])(' . implode('|', array_map(fn($o) => preg_quote($o, '~'), array_keys($map))) . ')(?![\p{L}\d])~u';
-        $fix = function (mixed $v) use (&$fix, $re, $map): mixed {
-            if (is_string($v)) return (string) preg_replace_callback($re, fn($m) => $map[$m[1]] ?? $m[0], $v);
-            if (is_array($v)) { foreach ($v as $k => $x) $v[$k] = $fix($x); }
-            return $v;
-        };
+        if (!class_exists(\Core\Blueprint\References::class)) return;
         $db = app()->db;
         foreach ($db->fetchAll('SELECT id, title, nav_title, content_draft, content_published FROM pages') as $p) {
             $upd = [];
-            foreach (['title', 'nav_title'] as $c) if (is_string($p[$c]) && ($n = $fix($p[$c])) !== $p[$c]) $upd[$c] = $n;
+            foreach (['title', 'nav_title'] as $c) if (is_string($p[$c]) && ($n = \Core\Blueprint\References::text($p[$c], $refs)) !== $p[$c]) $upd[$c] = $n;
             foreach (['content_draft', 'content_published'] as $c) {
                 $d = json_decode((string) $p[$c], true);
                 if (!is_array($d)) continue;
-                $n = json_encode($fix($d), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                if ($n !== json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) $upd[$c] = $n;
+                $new = \Core\Blueprint\References::apply($d, $refs);
+                if ($new !== $d) $upd[$c] = json_encode($new, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
             if ($upd) $db->update('pages', $upd, 'id = ?', [(int) $p['id']]);
         }
+        foreach (Entries::query($t, ['limit' => 500]) as $e) {
+            $in = [];
+            foreach (Tables::dataFields($t['fields']) as $f) {
+                $c = (string) $f['name'];
+                if (in_array($c, $skip, true) || !is_string($e[$c] ?? null) || $e[$c] === '') continue;
+                $d = str_starts_with(ltrim($e[$c]), '[') || str_starts_with(ltrim($e[$c]), '{') ? json_decode($e[$c], true) : null;
+                $n = is_array($d) ? (string) json_encode(\Core\Blueprint\References::apply($d, $refs), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : \Core\Blueprint\References::text($e[$c], $refs);
+                if (is_array($d) ? \Core\Blueprint\References::apply($d, $refs) !== $d : $n !== $e[$c]) $in[$c] = $n;
+            }
+            if ($in) Entries::save($t, (int) $e['id'], $in + ['status' => $e['status']], __('Gebietskarte: Verweise auf umbenannte Gebiete'));
+        }
+    }
+
+    /**
+     * Beispiel-Flächen über das Land verteilt: $n Bänder von Nord nach Süd (nach der Breite der Beschriftungspunkte), je Band die Fläche
+     * nahe der Bandmitte und der Mitte des Landes, dazu Nachbarn im selben Band – nicht angrenzend an Flächen anderer Gebiete, soweit möglich.
+     * @param array<string, array> $units @return list<list<string>> je Gebiet (Nord zuerst)
+     */
+    public static function spread(array $units, int $n, int $per = self::EXAMPLE_UNITS): array
+    {
+        $ids = array_values(array_filter(array_map('strval', array_keys($units)), fn($u) => (float) ($units[$u]['y'] ?? 0) !== 0.0));
+        if ($n <= 0 || !$ids) return [];
+        usort($ids, fn($a, $b) => (float) $units[$b]['y'] <=> (float) $units[$a]['y'] ?: strcmp($a, $b));
+        $adj = Render::neighbors(array_combine($ids, $ids), $units);
+        $cx = array_sum(array_map(fn($u) => (float) $units[$u]['x'], $ids)) / count($ids);
+        $taken = [];   // Fläche → Gebiet (Index)
+        $out = [];
+        $len = count($ids);
+        for ($i = 0; $i < $n; $i++) {
+            $slice = array_slice($ids, (int) floor($i * $len / $n), max(1, (int) floor(($i + 1) * $len / $n) - (int) floor($i * $len / $n)));
+            $my = array_sum(array_map(fn($u) => (float) $units[$u]['y'], $slice)) / count($slice);
+            $touchesOther = fn(string $u) => (bool) array_filter($adj[$u] ?? [], fn($v) => isset($taken[$v]) && $taken[$v] !== $i);
+            $score = fn(string $u) => abs((float) $units[$u]['y'] - $my) + 0.5 * abs((float) $units[$u]['x'] - $cx) + ($touchesOther($u) ? 10 : 0);
+            $cand = array_values(array_filter($slice, fn($u) => !isset($taken[$u])));
+            if (!$cand) { $out[] = []; continue; }
+            usort($cand, fn($a, $b) => $score($a) <=> $score($b));
+            $pick = [$cand[0]];
+            $taken[$cand[0]] = $i;
+            while (count($pick) < $per) {
+                $next = array_values(array_filter($cand, fn($u) => !isset($taken[$u]) && array_intersect($adj[$u] ?? [], $pick)));
+                if (!$next) $next = array_values(array_filter($cand, fn($u) => !isset($taken[$u])));
+                if (!$next) break;
+                usort($next, fn($a, $b) => ($touchesOther($a) <=> $touchesOther($b)) ?: ($score($a) <=> $score($b)));
+                $pick[] = $next[0];
+                $taken[$next[0]] = $i;
+            }
+            $out[] = $pick;
+        }
+        return $out;
+    }
+
+    /** Reihenfolge der Gebiete Nord → Süd: nach dem neutralen Namen (Nord, Mitte, Süd, Nummer), sonst wie gespeichert @param list<array> $regions */
+    private static function bandOrder(array $regions): array
+    {
+        $rank = function (array $r): array {
+            if (preg_match('~\b(Nord|Mitte|Süd)(?: (\d+))?$~u', (string) $r['name'], $m)) return [array_search($m[1], self::BANDS, true), (int) ($m[2] ?? 0)];
+            return [9, 0];
+        };
+        $idx = array_keys($regions);
+        usort($idx, fn($a, $b) => $rank($regions[$a]) <=> $rank($regions[$b]) ?: $a <=> $b);
+        return array_map(fn($i) => $regions[$i], $idx);
     }
 
     /** Region der neuen Website: ctx code = Landesschlüssel („06“) bzw. null (freie Angabe – dann nur die Aufgabe) */
@@ -323,15 +389,13 @@ final class Blueprint
             $map = Repo::map($m['id']);
             if (!$map) continue;
             $unitsAll = Bases::units($map['base'], $map['level'], $map['scope'])['units'];
-            $units = array_map('strval', array_keys($unitsAll));
-            sort($units);
-            $regions = Bound::regionsOf($map);
+            // Beispiel-Flächen über das Land verteilt, passend zu den Namen Nord/Mitte/Süd
+            $regions = self::bandOrder(Bound::regionsOf($map));
+            $spread = self::spread($unitsAll, count($regions));
             $by = [];
-            $i = 0;
-            foreach ($regions as $r) {
-                $by[$r['id']] = array_slice($units, $i, self::EXAMPLE_UNITS);
-                $i += self::EXAMPLE_UNITS;
-            }
+            foreach ($regions as $i => $r) $by[$r['id']] = $spread[$i] ?? [];
+            // Beschriftungen der Quelle (Text, Lage) passen nicht zu den neuen Flächen – Standardbeschriftung
+            app()->db->update(Repo::MAPS, ['labels' => '{}'], 'id = ?', [(int) $map['id']]);
             if ($map['source'] === 'table') {
                 // Einträge: Feld mit den Flächen ersetzen (die Kreise der Quell-Region fallen weg), Demo-Einträge umbenennen
                 $res = self::tableRegion($map, $by);

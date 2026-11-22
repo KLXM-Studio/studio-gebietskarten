@@ -205,3 +205,8 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>places</code> (Kreise und kreisfreie Städte des Ausschnitts, Namen der Gebiete), <code>fields</code> (<code>tabelle.feld</code> der Flächen), <code>entries</code>
     (Titelfeld, ID → „Regionalgruppe Nord/Mitte/Süd“ nach der Breite der Flächen, <code>Blueprint::bandLabels()</code>), <code>rename</code> (alter → neuer Name).
     Eigene Gebiete heißen im Export „Gebiet Nord …“ und nach dem Regionswechsel nach ihrem ersten Kreis.</p>
+  <p>Seit 0.7.2: Umbenennen nur an echten Verweisen über <code>Core\Blueprint\References</code> (<code>Blueprint::relink()</code> für Seiten und die
+    Einträge der Tabelle), <code>rename</code> fällt weg. <code>blueprint.export</code> leert <code>labels</code> der Karten außer bei <code>demo=full</code>,
+    <code>blueprint.region</code> immer. <code>Blueprint::spread($units, $n)</code>: Bänder nach Breite, je Band Fläche nahe Band- und Landesmitte plus
+    Nachbar im Band, Flächen anderer Gebiete möglichst nicht angrenzend (<code>Render::neighbors</code>); Reihenfolge der Gebiete nach Nord/Mitte/Süd im
+    Namen (<code>bandOrder()</code>). <code>nameParts()</code> liefert Ortsnamen auch aus Teilen.</p>

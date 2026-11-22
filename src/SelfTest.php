@@ -136,10 +136,13 @@ final class SelfTest
             self::t(in_array('Wuppertal', (array) ($a['places'] ?? []), true) && in_array('Testland Nord', (array) ($a['places'] ?? []), true)
                 && in_array($handle . '.gebiet', (array) ($a['fields'] ?? []), true), 'Vorlagen (Tabelle): Ortsnamen der Quelle (Kreise, Gebiete), Feld der Flächen');
             $labels = (array) ($a['entries'][$handle]['labels'] ?? []);
-            self::t(($labels[$ids[0]] ?? '') === 'Testgruppe Nord' && ($labels[$ids[1]] ?? '') === 'Testgruppe Süd' && ($a['rename']['Testland Nord'] ?? '') === 'Testgruppe Nord',
+            self::t(($labels[$ids[0]] ?? '') === 'Testgruppe Nord' && ($labels[$ids[1]] ?? '') === 'Testgruppe Süd' && !isset($a['rename']),
                 'Vorlagen (Tabelle): neutrale Namen nach der Lage (Nord/Süd)', json_encode($labels, JSON_UNESCAPED_UNICODE) ?: '');
-            // Export benennt um: hier wie nach dem Anlegen – Namen „Testgruppe Nord/Süd“ (Demo)
-            foreach ($ids as $i => $eid) \Core\Data\Entries::save($t, $eid, ['titel' => $labels[$eid], 'rolle' => $i === 0 ? 'Ansprechperson Testgruppe Nord' : '', 'status' => 'published']);
+            // Export benennt um: hier wie nach dem Anlegen – Namen „Testgruppe Nord/Süd“ (Demo); Beschriftung der Quelle an der Karte
+            foreach ($ids as $i => $eid) \Core\Data\Entries::save($t, $eid, ['titel' => $labels[$eid], 'rolle' => $i === 0 ? 'Wanderung durch die Testgruppe Nord 2016' : 'Testgruppe Nord', 'status' => 'published']);
+            app()->db->update(Repo::MAPS, ['labels' => json_encode(['e' . $ids[0] => ['text' => "Borken\nSteinfurt"]])], 'id = ?', [$id]);
+            $pg = \Core\Pages::create(['slug' => 'gkst-verweise', 'title' => 'Verweise', 'status' => 'published'], \Core\Pages::sanitizeBlocks([['id' => 'gkst000001', 'type' => 'richtext',
+                'data' => ['text' => '<p>Kalamitätsfläche in der Testgruppe Nord 2016. <a href="/x/testgruppe-nord" data-link="entry:' . $handle . ':' . $ids[0] . '">Testgruppe Nord</a></p>'], 'tunes' => ['section' => []]]]));
             $lines = (array) Blueprint::region([], ['region' => 'Hessen', 'code' => '06', 'values' => []]);
             $map = (array) Repo::map($id);
             $units = Bases::units($map['base'], $map['level'], $map['scope'])['units'];
@@ -153,14 +156,26 @@ final class SelfTest
             self::t($ok && !array_filter($vals, fn($v) => in_array('Borken', $v, true) || in_array('Bonn', $v, true)), 'Vorlagen (Tabelle): Feld enthält nur Beispiel-Kreise aus Hessen, alte fallen weg',
                 json_encode($vals, JSON_UNESCAPED_UNICODE) ?: '');
             $first = trim(explode(',', (string) ($units[Bound::resolve([$vals[0][0] ?? ''], $units)[0][0] ?? '']['name'] ?? ''))[0]);
-            self::t(($rows[0]['titel'] ?? '') === 'Testgruppe ' . $first && ($rows[0]['slug'] ?? '') === \Core\Pages::slugify('Testgruppe ' . $first)
-                && ($rows[0]['rolle'] ?? '') === 'Ansprechperson Testgruppe ' . $first, 'Vorlagen (Tabelle): Demo-Einträge heißen nach dem ersten Kreis (Titel, Adresse, Rolle)', (string) ($rows[0]['titel'] ?? ''));
+            self::t(($rows[0]['titel'] ?? '') === 'Testgruppe ' . $first && ($rows[0]['slug'] ?? '') === \Core\Pages::slugify('Testgruppe ' . $first),
+                'Vorlagen (Tabelle): Demo-Einträge heißen nach dem ersten Kreis (Titel, Adresse)', (string) ($rows[0]['titel'] ?? ''));
+            $pc = (string) app()->db->fetchValue('SELECT content_published FROM pages WHERE id = ?', [$pg]);
+            self::t(($rows[0]['rolle'] ?? '') === 'Wanderung durch die Testgruppe Nord 2016' && ($rows[1]['rolle'] ?? '') === 'Testgruppe ' . $first
+                && str_contains($pc, 'Kalamitätsfläche in der Testgruppe Nord 2016') && str_contains($pc, '>Testgruppe ' . $first . '</a>'),
+                'Vorlagen (Tabelle): nur echte Verweise umbenannt (Link, Wert gleich dem Namen) – Fließtext bleibt', $pc);
+            self::t(((array) Repo::map($id))['labels'] === [], 'Vorlagen (Tabelle): Beschriftungen der Quelle gelöscht');
+            $c0 = array_map(fn($u) => (float) $units[$u]['y'], Bound::resolve($vals[0], $units)[0]);
+            $c1 = array_map(fn($u) => (float) $units[$u]['y'], Bound::resolve($vals[1], $units)[0]);
+            $owner = [];
+            foreach ([0, 1] as $k) foreach (Bound::resolve($vals[$k], $units)[0] as $u) $owner[$u] = 'g' . $k;
+            $nb = Render::neighbors($owner, $units);
+            self::t($c0 && $c1 && min($c0) > max($c1) && !in_array('g1', $nb['g0'] ?? [], true), 'Vorlagen (Tabelle): Beispiel-Flächen verteilt (Nord über Süd, nicht benachbart)');
             $geo = Render::geometry($map, Bound::regionsOf($map));
             self::t(count(array_filter((array) $geo['unitsOf'], fn($u) => count($u) === Blueprint::EXAMPLE_UNITS)) === 2, 'Vorlagen (Tabelle): Karte zeigt die Flächen der Einträge');
             self::t((bool) array_filter($lines, fn($l) => is_string($l) && str_contains($l, '2 Gebiete mit Beispiel-Flächen')), 'Vorlagen (Tabelle): Meldung zählt gespeicherte Einträge');
         } finally {
             if ($id) Repo::deleteMap($id);
             \Core\Kit\Demo::deleteTables($handle);
+            app()->db->query("DELETE FROM pages WHERE slug = 'gkst-verweise'");
             app()->settings->set(\Core\Blueprint\Apply::DEMO_KEY, $demoBefore ?? []);
             if ($demoBefore === null) app()->settings->delete(\Core\Blueprint\Apply::DEMO_KEY);
         }

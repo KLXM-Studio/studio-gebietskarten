@@ -1,5 +1,17 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.7.2 (2026-11-22)
+
+- **Kein Ersetzen im Fließtext:** Neutrale Namen und die Namen nach dem Regionswechsel ändern nur echte Verweise – Titel und Adresse des
+  Eintrags, Links auf ihn (Linktext, Adresse), Linkfelder mit Beschriftung, Werte genau gleich dem Namen (über `Core\Blueprint\References`).
+  Landschaftsnamen in Sätzen bleiben stehen; die Prüfung meldet sie als „Absatz ist auf {Region} bezogen“. Ortsnamen auch aus Teilen von
+  Namen („Rhein-Sieg/Bonn“ → Rhein-Sieg, Bonn, Rhein, Sieg).
+- **Beschriftungen:** Texte und Lagen der Beschriftungen je Gebiet gehen bei anonymen Demoinhalten nicht mit und werden beim Regionswechsel
+  gelöscht – die Standardbeschriftung greift.
+- **Beispiel-Flächen verteilt:** von Nord nach Süd in Bändern über das Land, je Gebiet nahe der Bandmitte und möglichst nicht angrenzend an
+  andere Gebiete – passend zu den Namen Nord/Mitte/Süd (`Blueprint::spread()`).
+- Selbsttest: Fließtext bleibt, Link wird umbenannt, Beschriftungen gelöscht, Flächen verteilt.
+
 ## 0.7.1 (2026-11-22)
 
 - **Karten aus einer Datentabelle in Website-Vorlagen:** Nach dem Regionswechsel bekommt das gebundene Feld der Einträge (z. B. „Gebiet“ der

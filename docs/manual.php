@@ -159,4 +159,6 @@
   <p>Kommen die Gebiete aus einer Datentabelle (z. B. Regionalgruppen), bekommen die Einträge im Feld mit den Flächen die Beispiel-Kreise des
     neuen Landes; die Kreise der Vorlage fallen weg. Die Namen der Gebiete der Quelle (Landschaften, Städte) gehen nicht mit: In der Vorlage heißen
     sie nach ihrer Lage („Regionalgruppe Nord“), in der neuen Website nach ihrem ersten Kreis („Regionalgruppe Darmstadt“) – zum Umbenennen.
-    Beim Export meldet die Prüfung der Texte Orts- und Kreisnamen der Quell-Region.</p>
+    Umbenannt werden nur Titel, Adresse und Links auf den Eintrag – derselbe Name in einem Satz bleibt stehen. Beim Export meldet die Prüfung
+    der Texte Orts-, Kreis- und Landschaftsnamen der Quell-Region je Absatz; die neue Website bekommt dafür eine Aufgabe. Die Beispiel-Flächen
+    liegen über das Land verteilt (Nord, Mitte, Süd), eigene Beschriftungen der Vorlage werden zurückgesetzt.</p>

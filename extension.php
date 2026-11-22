@@ -28,7 +28,7 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.4.0',
+    'version' => '0.5.0',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
@@ -79,6 +79,9 @@ return [
 
         $x->docs('manual', ['gebietskarten' => ['id' => 'gebietskarten', 'title' => 'Gebietskarten', 'after' => 'medien', 'file' => G::dir() . '/docs/manual.php']]);
         $x->docs('technical', ['gebietskarten' => ['title' => 'Gebietskarten (Erweiterung)', 'part' => 2, 'after' => 'medien', 'file' => G::dir() . '/docs/technical.php']]);
+
+        // „In deiner Nähe“ des Cores (Core\Data\Nearby): Ort der Besucher-Eingabe → Fläche, Kartenpunkt, zuständige Gebiete und Websites
+        if (\Core\Filters::known('data.nearby')) $x->filter('data.nearby', fn(array $v, array $ctx): ?array => Klxm\Gebietskarten\Nearby::resolve($v, $ctx));
 
         $x->health(function (): array {
             if (!G::on()) return [];

@@ -144,3 +144,7 @@
     automatisch und überall gleich: unter jede Karte und in die Vorschau als „Kartengrundlage: © BKG (Jahr) dl-de/by-2-0, Datenquellen, vereinfacht“
     (mit Links), in jeden SVG-Export, die Mediathek und den Grafik-Editor mit den Adressen statt Links. Entfernen Sie ihn im Grafik-Editor nicht.
     Ältere Exporte behalten ihren damaligen Text – exportieren Sie die Karte bei Bedarf neu.</p>
+  <p><b>„In deiner Nähe“:</b> Ist eine Karte an eine Datentabelle gebunden (z. B. Regionalgruppen), finden die Blöcke Personen, Nächste Termine und
+    Datenliste mit „In deiner Nähe“ über diese Karte die zuständige Gruppe: Besucher geben einen Ort oder Kreis ein, gezeigt werden zuerst die Termine bzw.
+    Ansprechpersonen der Gruppe, zu deren Gebiet der Ort gehört, danach Einträge im Umkreis. Mit dem Feld „Website“ (Netzwerk) findet der Verband so den
+    zuständigen Landesverein. Postleitzahlen kennt die Kartengrundlage nicht – dafür gibt es im Core die Einstellung „PLZ und Orte online suchen“.</p>

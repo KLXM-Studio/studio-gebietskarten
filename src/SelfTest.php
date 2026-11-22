@@ -39,6 +39,10 @@ final class SelfTest
         self::grid();
         echo "Kartendaten Deutschland\n";
         self::realData();
+        echo "In deiner Nähe (Filter data.nearby des Cores)\n";
+        self::nearby();
+        echo "In deiner Nähe (Filter data.nearby des Cores)\n";
+        self::nearby();
         echo "Zuordnung, Ausgabe, Zugänglichkeit\n";
         $mapId = 0;
         try {
@@ -103,6 +107,22 @@ final class SelfTest
         self::t($simp === [[0, 0], [4, 0]], 'Vereinfachen behält die Endpunkte');
         $pr = Topo::projection([0.0, 0.0, 2.0, 2.0], 1000, 10);
         self::t($pr['width'] === 1000 && ($pr['fn'])(0.0, 2.0) === [10.0, 10.0], 'Projektion: Norden oben, Rand 10');
+    }
+
+    /** „In deiner Nähe“: Fläche nach Name/Schlüssel/Punkt, Kartenpunkt (ohne Netz) */
+    private static function nearby(): void
+    {
+        $w = Nearby::byName('Wesel');
+        self::t(($w['id'] ?? '') === '05170', 'Name → Kreis (Wesel = 05170)', (string) json_encode($w));
+        self::t((Nearby::byName('Kreis Wesel')['id'] ?? '') === '05170', 'Zusatz „Kreis“ wird erkannt');
+        self::t((Nearby::byName('Nordrhein-Westfalen')['id'] ?? '') === '05', 'Name → Land');
+        self::t((Nearby::byName('05170')['id'] ?? '') === '05170', 'Amtlicher Schlüssel');
+        self::t(Nearby::byName('Quatschhausen') === null, 'Unbekannter Ort → nichts');
+        $p = Nearby::byPoint(51.643, 6.6034);
+        self::t(($p['id'] ?? '') === '05170', 'Punkt → Kreis, in dem er liegt', (string) json_encode($p));
+        self::t(Nearby::byPoint(40.0, 2.0) === null, 'Punkt außerhalb → nichts');
+        $v = Nearby::resolve(['point' => null, 'label' => '', 'regions' => [], 'sites' => []], ['q' => 'Wesel', 'point' => null]);
+        self::t(!Gebietskarten::on() || (abs((float) ($v['point']['lat'] ?? 0) - 51.643) < 0.01 && ($v['label'] ?? '') === 'Wesel'), 'Filter: Kartenpunkt und Name aus der Fläche');
     }
 
     private static function realData(): void

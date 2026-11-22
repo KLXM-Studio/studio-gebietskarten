@@ -159,6 +159,12 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>image</code>, <code>contact</code>, <code>site</code>, <code>label</code> (seit 0.3.0, Text der Beschriftung). <code>Bound::resolve()</code> nimmt Schlüssel (auch ohne führende Null) und Namen
     (ohne Groß-/Kleinschreibung, „Kreis …“, Zusätze nach Komma). Geteilte Tabellen (<code>Core\Data\Shared</code>) gehen über <code>Entries</code> wie lokale;
     <code>site</code> vergleicht mit dem Schlüssel und den Hosts der Website.</p>
+  <p><b>„In deiner Nähe“</b> (seit 0.5.0, <code>Nearby</code>): Filter <code>data.nearby</code> des Cores (<code>Core\Data\Nearby::locate()</code>). Fläche über
+    <code>Nearby::byName()</code> (Gemeinden, falls nachgeladen, dann Kreise, Länder; Namen wie bei <code>Bound::resolve()</code>, auch AGS) bzw.
+    <code>Nearby::byPoint()</code> (Punkt-in-Fläche über die Bögen, gerade/ungerade); Kartenpunkt = Beschriftungspunkt (<code>x</code>/<code>y</code>) der Fläche.
+    <code>Nearby::regionsFor($ags)</code>: alle Gebiete von Karten mit Quelle <code>table</code>, deren aufgelöste Flächen die gefundene enthalten oder in ihr liegen
+    (Präfix des AGS: Gemeinde 05170048 → Kreis 05170 → Land 05) – Rückgabe <code>regions</code> „{tabelle}:{id}“ und <code>sites</code> (Feld „Website“ als Schlüssel
+    oder Host, <code>Nearby::siteKey()</code>). Der Core ordnet damit zuständige Einträge vor die im Umkreis (Verknüpfung oder Funktion mit Verknüpfung auf das Gebiet).</p>
   <p><b>Zuordnung per Klick</b> (<code>EntryAssign</code>, Route <code>POST /admin/gebietskarten/{id}/zuordnung</code> wie bei eigenen Karten, JSON
     <code>{"regions": {"{eintrag}": ["05170", …]}}</code>): nur mit <code>can('data.edit', $tabelle)</code> und einem Feld vom Typ <code>multiselect</code>,
     <code>text</code> oder <code>textarea</code>; je Eintrag <code>Core\Data\EntryEdit::reason()</code> (veröffentlicht nur mit <code>data.publish</code>, fremde

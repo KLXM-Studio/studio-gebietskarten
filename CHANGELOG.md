@@ -1,5 +1,16 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.5.0 (2026-11-22)
+
+- **„In deiner Nähe“ des Cores** (Filter `data.nearby`, Core-Stufe „Netzwerk“): Besucher geben einen Ort ein, die Erweiterung findet die
+  Fläche ohne Anfragen an Dritte – Gemeinde (wenn nachgeladen), Kreis oder Land, auch „Kreis Wesel“ oder den amtlichen Schlüssel – bzw. bei
+  einem Kartenpunkt (PLZ über die Geokodierung des Cores) die Fläche, in der er liegt. Sie liefert den Beschriftungspunkt als Kartenpunkt und
+  alle Gebiete von Karten mit Datentabelle, die die Fläche enthalten (Gemeinde → Kreis → Gebiet) – als Einträge „tabelle:id“ und mit dem Feld
+  „Website“ die zuständige Website. So zeigt der Core zuerst Termine und Ansprechpersonen der Regionalgruppe bzw. beim Verband die
+  Ansprechpartner des zuständigen Landesvereins. Feld „Website“: Schlüssel oder Host der Website.
+- `Nearby::byName()`, `byPoint()`, `regionsFor()`, `siteKey()`; Selbsttest „In deiner Nähe“ in `gebietskarten:selftest`.
+- Braucht für die Anbindung Core mit `Core\Data\Nearby` (ältere Core-Versionen: Filter wird nicht angemeldet).
+
 ## 0.4.0 (2026-11-22)
 
 - **Abschnitt „Darstellung“ im Karteneditor:** Die Redaktion stellt das Aussehen je Karte selbst ein; die Vorschau zeigt jede Änderung sofort

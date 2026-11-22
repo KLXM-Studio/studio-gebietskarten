@@ -102,6 +102,68 @@ final class SelfTest
         } finally {
             Repo::deleteMap($id);
         }
+        self::blueprintTable();
+    }
+
+    /**
+     * Karte aus einer Datentabelle (source=table, Feld „gebiet“ als Textfeld): Ortsnamen und neutrale Namen beim Export (blueprint.areas),
+     * Regionswechsel NRW → Hessen ersetzt das Feld (keine Kreise aus NRW mehr), Demo-Einträge heißen „Testgruppe {Kreis}“, die Karte
+     * zeigt Flächen. Vorübergehende Tabelle und Karte – werden entfernt.
+     */
+    private static function blueprintTable(): void
+    {
+        if (!class_exists(\Core\Kit\Demo::class) || !class_exists(\Core\Blueprint\Apply::class)) { echo "  – Core ohne Website-Vorlagen – Test übersprungen\n"; return; }
+        $handle = 'gkst_gruppen';
+        \Core\Kit\Demo::deleteTables($handle);
+        $t = \Core\Kit\Demo::table(['handle' => $handle, 'name' => 'Testgruppen', 'singular' => 'Testgruppe', 'fields' => [
+            ['name' => 'titel', 'label' => 'Titel', 'type' => 'text', 'required' => true],
+            ['name' => 'gebiet', 'label' => 'Gebiet', 'type' => 'textarea'],
+            ['name' => 'rolle', 'label' => 'Rolle', 'type' => 'text']], 'settings' => ['title_field' => 'titel']], fn($m) => print("  ! $m\n"));
+        if (!$t) { self::t(false, 'Vorlagen (Tabelle): Testtabelle anlegen'); return; }
+        $demoBefore = app()->settings->get(\Core\Blueprint\Apply::DEMO_KEY);
+        $id = 0;
+        try {
+            $ids = [];
+            foreach ([['Testland Nord', "Borken\nSteinfurt", 'Ansprechperson Testgruppe Testland Nord'], ['Testland Süd', "Rhein-Sieg-Kreis\nBonn", '']] as $i => [$name, $units, $rolle]) {
+                [$eid] = \Core\Data\Entries::save($t, null, ['titel' => $name, 'gebiet' => $units, 'rolle' => $rolle, 'status' => 'published']);
+                $ids[] = (int) $eid;
+            }
+            app()->settings->set(\Core\Blueprint\Apply::DEMO_KEY, ['entries' => [$handle => $ids], 'media' => []]);
+            $id = Repo::saveMap(null, ['title' => 'Testgruppen', 'level' => 'kreise', 'scope' => ['05'], 'source' => 'table',
+                'binding' => ['table' => $handle, 'units' => 'gebiet', 'name' => 'titel']]);
+            $map = (array) Repo::map($id);
+            $a = (array) Blueprint::areas([], ['region' => 'Nordrhein-Westfalen']);
+            self::t(in_array('Wuppertal', (array) ($a['places'] ?? []), true) && in_array('Testland Nord', (array) ($a['places'] ?? []), true)
+                && in_array($handle . '.gebiet', (array) ($a['fields'] ?? []), true), 'Vorlagen (Tabelle): Ortsnamen der Quelle (Kreise, Gebiete), Feld der Flächen');
+            $labels = (array) ($a['entries'][$handle]['labels'] ?? []);
+            self::t(($labels[$ids[0]] ?? '') === 'Testgruppe Nord' && ($labels[$ids[1]] ?? '') === 'Testgruppe Süd' && ($a['rename']['Testland Nord'] ?? '') === 'Testgruppe Nord',
+                'Vorlagen (Tabelle): neutrale Namen nach der Lage (Nord/Süd)', json_encode($labels, JSON_UNESCAPED_UNICODE) ?: '');
+            // Export benennt um: hier wie nach dem Anlegen – Namen „Testgruppe Nord/Süd“ (Demo)
+            foreach ($ids as $i => $eid) \Core\Data\Entries::save($t, $eid, ['titel' => $labels[$eid], 'rolle' => $i === 0 ? 'Ansprechperson Testgruppe Nord' : '', 'status' => 'published']);
+            $lines = (array) Blueprint::region([], ['region' => 'Hessen', 'code' => '06', 'values' => []]);
+            $map = (array) Repo::map($id);
+            $units = Bases::units($map['base'], $map['level'], $map['scope'])['units'];
+            $rows = array_map(fn($eid) => \Core\Data\Entries::find($t, $eid), $ids);
+            $vals = array_map(fn($r) => preg_split('~\n~', (string) ($r['gebiet'] ?? '')) ?: [], $rows);
+            $ok = true;
+            foreach ($vals as $v) {
+                [$res, $miss] = Bound::resolve($v, $units);
+                if (count($res) !== Blueprint::EXAMPLE_UNITS || $miss || array_filter($res, fn($u) => !str_starts_with($u, '06'))) $ok = false;
+            }
+            self::t($ok && !array_filter($vals, fn($v) => in_array('Borken', $v, true) || in_array('Bonn', $v, true)), 'Vorlagen (Tabelle): Feld enthält nur Beispiel-Kreise aus Hessen, alte fallen weg',
+                json_encode($vals, JSON_UNESCAPED_UNICODE) ?: '');
+            $first = trim(explode(',', (string) ($units[Bound::resolve([$vals[0][0] ?? ''], $units)[0][0] ?? '']['name'] ?? ''))[0]);
+            self::t(($rows[0]['titel'] ?? '') === 'Testgruppe ' . $first && ($rows[0]['slug'] ?? '') === \Core\Pages::slugify('Testgruppe ' . $first)
+                && ($rows[0]['rolle'] ?? '') === 'Ansprechperson Testgruppe ' . $first, 'Vorlagen (Tabelle): Demo-Einträge heißen nach dem ersten Kreis (Titel, Adresse, Rolle)', (string) ($rows[0]['titel'] ?? ''));
+            $geo = Render::geometry($map, Bound::regionsOf($map));
+            self::t(count(array_filter((array) $geo['unitsOf'], fn($u) => count($u) === Blueprint::EXAMPLE_UNITS)) === 2, 'Vorlagen (Tabelle): Karte zeigt die Flächen der Einträge');
+            self::t((bool) array_filter($lines, fn($l) => is_string($l) && str_contains($l, '2 Gebiete mit Beispiel-Flächen')), 'Vorlagen (Tabelle): Meldung zählt gespeicherte Einträge');
+        } finally {
+            if ($id) Repo::deleteMap($id);
+            \Core\Kit\Demo::deleteTables($handle);
+            app()->settings->set(\Core\Blueprint\Apply::DEMO_KEY, $demoBefore ?? []);
+            if ($demoBefore === null) app()->settings->delete(\Core\Blueprint\Apply::DEMO_KEY);
+        }
     }
 
     /** Vier Quadrate mit gemeinsamen Bögen: Verschmelzen ergibt einen Ring, die Fläche bleibt gleich */

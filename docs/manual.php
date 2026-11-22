@@ -156,3 +156,7 @@
   <p>Legt die Netzwerk-Verwaltung aus einer Website eine Website-Vorlage an, gehen die Karten und ihre Gebiete mit – ohne Ansprechpersonen und
     Bilder. Wählt die neue Website in der Schnelleinrichtung ihr Gebiet (z. B. Hessen), zeigt jede Karte mit Kreisen bzw. Gemeinden das neue
     Land; die Beispiel-Gebiete bekommen je zwei Kreise, der Rest bleibt grau. Eine Aufgabe „Gebiete zuordnen“ führt zur Karte.</p>
+  <p>Kommen die Gebiete aus einer Datentabelle (z. B. Regionalgruppen), bekommen die Einträge im Feld mit den Flächen die Beispiel-Kreise des
+    neuen Landes; die Kreise der Vorlage fallen weg. Die Namen der Gebiete der Quelle (Landschaften, Städte) gehen nicht mit: In der Vorlage heißen
+    sie nach ihrer Lage („Regionalgruppe Nord“), in der neuen Website nach ihrem ersten Kreis („Regionalgruppe Darmstadt“) – zum Umbenennen.
+    Beim Export meldet die Prüfung der Texte Orts- und Kreisnamen der Quell-Region.</p>

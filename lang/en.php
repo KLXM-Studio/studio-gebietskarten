@@ -324,4 +324,12 @@ return [
     'keiner' => 'none',
     'Für Orte unterhalb der Kreisebene (z. B. „In deiner Nähe“ mit einem Gemeindenamen) Gemeindedaten laden: {list}.' => 'For places below district level (e.g. “Near you” with a municipality name) load municipality data: {list}.',
     'Gemeindedaten laden' => 'Load municipality data',
+    'Gebietskarte „{title}“: Tabelle oder Feld der Flächen fehlt.' => 'Area map “{title}”: table or area field is missing.',
+    '„{name}“: keine passende Auswahl für die Beispiel-Flächen.' => '“{name}”: no matching option for the example areas.',
+    'Gebietskarte „{title}“: Beispiel-Flächen der neuen Region' => 'Area map “{title}”: example areas of the new region',
+    'Die Karte zeigt jetzt das Gebiet {region}. Die Beispiel-Gebiete haben nur einzelne Flächen – bitte die richtigen zuordnen.' => 'The map now shows {region}. The example areas only have a few units – please assign the right ones.',
+    'Gebiete zuordnen: {title}' => 'Assign areas: {title}',
+    'Gebietskarte „{title}“: Ausschnitt {region}, {n} Gebiete mit Beispiel-Flächen.' => 'Area map “{title}”: extent {region}, {n} areas with example units.',
+    'Gebietskarten: Die Website hat schon Karten – nichts übernommen.' => 'Area maps: the website already has maps – nothing imported.',
+    'Gebietskarten: {maps} Karten, {regions} Gebiete übernommen.' => 'Area maps: {maps} maps, {regions} areas imported.',
 ];

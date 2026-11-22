@@ -1,5 +1,17 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.7.1 (2026-11-22)
+
+- **Karten aus einer Datentabelle in Website-Vorlagen:** Nach dem Regionswechsel bekommt das gebundene Feld der Einträge (z. B. „Gebiet“ der
+  Regionalgruppen) genau die Beispiel-Kreise des neuen Landes – die Kreise der Quell-Region fallen weg, die Karte zeigt die Flächen. Vorher
+  blieben die alten Werte stehen und die Karte leer.
+- **Neutrale Namen:** Beim Export heißen Einträge, die an Flächen hängen, nach ihrer Lage („Regionalgruppe Nord/Mitte/Süd“, eigene Gebiete
+  „Gebiet Nord …“) – auch in Texten und Rollen; nach dem Regionswechsel heißen Demo-Einträge nach ihrem ersten Beispiel-Kreis
+  („Regionalgruppe Darmstadt“, Titel, Adresse, Nennungen in Eintrag und Seiten).
+- **Ortsnamen der Quell-Region** für die Prüfung der Texte (Filter `blueprint.areas` des Cores): Kreise und kreisfreie Städte des Ausschnitts
+  und die Namen der Gebiete; Felder mit Flächen werden nicht geprüft.
+- Selbsttest für Karten aus einer Datentabelle (Ortsnamen, neutrale Namen, Feld ersetzt, Umbenennen, Karte zeigt Flächen).
+
 ## 0.7.0 (2026-11-22)
 
 - **Website-Vorlagen des Cores** (`Core\Blueprint`, Filter `blueprint.*`): Karten und Gebiete gehen mit einer Vorlage mit (ohne

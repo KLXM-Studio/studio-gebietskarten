@@ -28,7 +28,7 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.7.0',
+    'version' => '0.7.1',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
@@ -86,7 +86,7 @@ return [
         if (\Core\Filters::known('data.nearby_point')) $x->filter('data.nearby_point', fn(mixed $v, array $ctx): ?array => $v ?? Klxm\Gebietskarten\Nearby::pointOf((string) ($ctx['table'] ?? ''), (int) ($ctx['id'] ?? 0)));
 
         // Website-Vorlagen des Cores (Core\Blueprint): Karten mitnehmen, Region der Quelle melden, Ausschnitt der neuen Region setzen
-        foreach (['blueprint.source' => 'source', 'blueprint.export' => 'export', 'blueprint.apply' => 'apply', 'blueprint.region' => 'region'] as $f => $fn) {
+        foreach (['blueprint.source' => 'source', 'blueprint.export' => 'export', 'blueprint.apply' => 'apply', 'blueprint.region' => 'region', 'blueprint.areas' => 'areas'] as $f => $fn) {
             if (\Core\Filters::known($f)) $x->filter($f, fn(mixed $v, array $ctx): ?array => Klxm\Gebietskarten\Blueprint::$fn($v, $ctx));
         }
 

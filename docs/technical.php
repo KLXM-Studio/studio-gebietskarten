@@ -198,3 +198,10 @@ $svg = Render::svg(Repo::map(3));                                               
     (eigene Gebiete über <code>Repo::saveAssignment</code>, Datentabellen über <code>EntryAssign::save</code>), Rückgabe je Karte
     <code>[&#39;task&#39; =&gt; &#39;Gebiete zuordnen: …&#39;, &#39;link&#39; =&gt; &#39;/admin/gebietskarten/{id}&#39;]</code> – der Core legt daraus eine Aufgabe an. Selbsttest: Abschnitt
     „Website-Vorlagen“ (nur in einer Website ohne Karten).</p>
+  <p>Seit 0.7.1: Bei <code>source=table</code> schreibt <code>Blueprint::tableRegion()</code> das gebundene Feld neu (nur die Beispiel-Flächen, Namen bzw.
+    Schlüssel; Mehrfachauswahl über <code>EntryAssign::value</code>) mit <code>Core\Data\Entries::save</code> – ohne Rechteprüfung, weil der Schritt Gebiet
+    der Schnelleinrichtung bzw. <code>site:create</code> ihn auslöst. Demo-Einträge (<code>Core\Blueprint\Demo::isDemo</code>) heißen danach
+    „{Einzahl der Tabelle} {erster Kreis}“ (Titel, Adresse, Nennungen im Eintrag und in Seiten). <code>blueprint.areas</code> (Export, <code>--check</code>):
+    <code>places</code> (Kreise und kreisfreie Städte des Ausschnitts, Namen der Gebiete), <code>fields</code> (<code>tabelle.feld</code> der Flächen), <code>entries</code>
+    (Titelfeld, ID → „Regionalgruppe Nord/Mitte/Süd“ nach der Breite der Flächen, <code>Blueprint::bandLabels()</code>), <code>rename</code> (alter → neuer Name).
+    Eigene Gebiete heißen im Export „Gebiet Nord …“ und nach dem Regionswechsel nach ihrem ersten Kreis.</p>

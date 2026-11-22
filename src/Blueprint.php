@@ -176,6 +176,27 @@ final class Blueprint
         return array_values(array_unique(array_filter($out, fn($p) => !preg_match('~^(?:Kreis|Stadt|Nord|Mitte|Süd|West|Ost)$~iu', $p))));
     }
 
+    /**
+     * Eindeutige Schreibweise einer Fläche für ein Text-Feld: Name, wenn er nur diese Fläche meint und kein anderer Name mit ihm beginnt
+     * („Offenbach“ ↔ „Offenbach am Main“), sonst mit Art („Landkreis Offenbach“), sonst der amtliche Schlüssel – immer so, dass
+     * Bound::resolve genau diese Fläche findet. @param array<string, array> $units
+     */
+    public static function unitValue(string $u, array $units): string
+    {
+        if (!isset($units[$u])) return $u;
+        $name = (string) $units[$u]['name'];
+        $n = Bound::norm($name);
+        $prefix = false;
+        foreach ($units as $id => $x) {
+            if ((string) $id === $u) continue;
+            $o = Bound::norm((string) $x['name']);
+            if ($o === $n || str_starts_with($o, $n . ' ') || str_starts_with($o, $n . ',')) { $prefix = true; break; }
+        }
+        $cands = $prefix ? [trim((string) $units[$u]['bez'] . ' ' . $name)] : [$name, trim((string) $units[$u]['bez'] . ' ' . $name)];
+        foreach ($cands as $c) if ($c !== '' && Bound::resolve([$c], $units)[0] === [$u]) return $c;
+        return $u;
+    }
+
     /** Einzahl einer Tabelle („Regionalgruppe“) – Feld singular, sonst der Name */
     private static function singular(array $t): string
     {
@@ -257,8 +278,7 @@ final class Blueprint
             $names = [];
             foreach ($list as $u) {
                 if (!isset($units[$u])) continue;
-                $n = (string) $units[$u]['name'];
-                $names[] = Bound::resolve([$n], $units)[0] === [(string) $u] ? $n : (string) $u;
+                $names[] = self::unitValue((string) $u, $units);
             }
             if ($field['type'] === 'multiselect') {
                 [$value, $missing] = EntryAssign::value($field, $e[$field['name']] ?? null, [], $list, $units, 'names');
@@ -296,6 +316,7 @@ final class Blueprint
     private static function relink(array $t, array $refs, array $skip): void
     {
         if (!class_exists(\Core\Blueprint\References::class)) return;
+        if (method_exists(\Core\Blueprint\References::class, 'renameTasks')) \Core\Blueprint\References::renameTasks($refs);   // Aufgaben „Text anpassen: …“
         $db = app()->db;
         foreach ($db->fetchAll('SELECT id, title, nav_title, content_draft, content_published FROM pages') as $p) {
             $upd = [];

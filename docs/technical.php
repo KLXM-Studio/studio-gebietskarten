@@ -210,3 +210,5 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>blueprint.region</code> immer. <code>Blueprint::spread($units, $n)</code>: Bänder nach Breite, je Band Fläche nahe Band- und Landesmitte plus
     Nachbar im Band, Flächen anderer Gebiete möglichst nicht angrenzend (<code>Render::neighbors</code>); Reihenfolge der Gebiete nach Nord/Mitte/Süd im
     Namen (<code>bandOrder()</code>). <code>nameParts()</code> liefert Ortsnamen auch aus Teilen.</p>
+  <p>Seit 0.7.3: <code>Blueprint::unitValue($id, $units)</code> – eindeutige Schreibweise einer Fläche (Name, sonst Art + Name, sonst Schlüssel), geprüft
+    mit <code>Bound::resolve</code>; Aufgaben mit Link auf umbenannte Einträge über <code>Core\Blueprint\References::renameTasks</code>.</p>

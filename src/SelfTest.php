@@ -171,6 +171,15 @@ final class SelfTest
             self::t($c0 && $c1 && min($c0) > max($c1) && !in_array('g1', $nb['g0'] ?? [], true), 'Vorlagen (Tabelle): Beispiel-Flächen verteilt (Nord über Süd, nicht benachbart)');
             $geo = Render::geometry($map, Bound::regionsOf($map));
             self::t(count(array_filter((array) $geo['unitsOf'], fn($u) => count($u) === Blueprint::EXAMPLE_UNITS)) === 2, 'Vorlagen (Tabelle): Karte zeigt die Flächen der Einträge');
+            // jede geschriebene Fläche wird eindeutig aufgelöst und eingefärbt – auch mehrdeutige Namen (Landkreis Offenbach ↔ Offenbach am Main)
+            $amb = ['06438' => Blueprint::unitValue('06438', $units), '06413' => Blueprint::unitValue('06413', $units)];
+            $allOk = true;
+            foreach (array_keys($units) as $uk) if (Bound::resolve([Blueprint::unitValue((string) $uk, $units)], $units)[0] !== [(string) $uk]) $allOk = false;
+            self::t($allOk && $amb['06438'] !== 'Offenbach' && Bound::resolve([$amb['06438']], $units)[0] === ['06438'], 'Vorlagen (Tabelle): eindeutige Schreibweise jeder Fläche (z. B. ' . $amb['06438'] . ')');
+            $colored = array_merge(...array_values((array) $geo['unitsOf']));
+            $written = array_merge(...array_map(fn($v) => Bound::resolve($v, $units)[0], $vals));
+            sort($colored); sort($written);
+            self::t($colored === $written && !($geo['unmatched'] ?? []), 'Vorlagen (Tabelle): jede geschriebene Fläche aufgelöst und eingefärbt');
             self::t((bool) array_filter($lines, fn($l) => is_string($l) && str_contains($l, '2 Gebiete mit Beispiel-Flächen')), 'Vorlagen (Tabelle): Meldung zählt gespeicherte Einträge');
         } finally {
             if ($id) Repo::deleteMap($id);

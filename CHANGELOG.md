@@ -1,5 +1,13 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.7.3 (2026-11-22)
+
+- **Eindeutige Flächen im Text-Feld:** Nach dem Regionswechsel schreibt die Erweiterung jede Beispiel-Fläche so, dass genau sie gemeint ist –
+  den Namen, wenn kein anderer mit ihm beginnt, sonst mit Art („Landkreis Offenbach“ statt „Offenbach“, das auch Offenbach am Main trifft),
+  sonst den amtlichen Schlüssel (`Blueprint::unitValue()`). Vorher blieb eine mehrdeutige Fläche ungefärbt.
+- Aufgaben „Text an Ihre Organisation anpassen: …“ zu umbenannten Einträgen tragen den neuen Namen.
+- Selbsttest: jede Fläche eindeutig, jede geschriebene Fläche aufgelöst und eingefärbt.
+
 ## 0.7.2 (2026-11-22)
 
 - **Kein Ersetzen im Fließtext:** Neutrale Namen und die Namen nach dem Regionswechsel ändern nur echte Verweise – Titel und Adresse des

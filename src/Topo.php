@@ -210,7 +210,7 @@ final class Topo
      * Projektion für den Ausschnitt: abstandstreue Zylinderprojektion mit cos(mittlere Breite) – für Länder- und
      * Regionalkarten genau genug und ohne Bibliothek. Liefert fn(lon, lat): [x, y] und die Maße des Bildes.
      * @param array{0: float, 1: float, 2: float, 3: float} $b
-     * @return array{fn: \Closure(float, float): array{0: float, 1: float}, width: int, height: int}
+     * @return array{fn: \Closure(float, float): array{0: float, 1: float}, width: int, height: int, params: array{0: float, 1: float, 2: float, 3: float, 4: float, 5: float}}
      */
     public static function projection(array $b, int $width = 1000, int $pad = 16): array
     {
@@ -227,7 +227,8 @@ final class Topo
         }
         $ox = ($width - $w * $s) / 2;
         $fn = static fn(float $x, float $y): array => [round(($x - $minX) * $k * $s + $ox, 1), round(($maxY - $y) * $s + $pad, 1)];
-        return ['fn' => $fn, 'width' => $width, 'height' => $height];
+        // Kennwerte zum Umrechnen in beide Richtungen (Labels::toSvg/toGeo, Editor): [minLon, maxLat, kx, s, ox, pad]
+        return ['fn' => $fn, 'width' => $width, 'height' => $height, 'params' => [$minX, $maxY, $k * $s, $s, $ox, (float) $pad]];
     }
 
     /**

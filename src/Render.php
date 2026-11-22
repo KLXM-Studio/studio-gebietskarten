@@ -17,7 +17,7 @@ namespace Klxm\Gebietskarten;
 final class Render
 {
     /** Ändert sich die Berechnung, ändert sich der Schlüssel des Zwischenspeichers */
-    private const VERSION = 4;
+    private const VERSION = 5;
     private const WIDTH = 1000;
 
     private static int $count = 0;
@@ -28,7 +28,8 @@ final class Render
      * Geometrie einer Karte. Gebiete mit 'units' (eigene) bzw. 'raw' (Datentabelle, wird hier aufgelöst).
      * @param list<array> $regions
      * @return array{w: int, h: int, regions: array<string, string>, rest: string, units: array<string, string>, lines: string,
-     *               labels: array<string, array{0: float, 1: float}>, owner: array<string, string>, unitsOf: array<string, list<string>>,
+     *               labels: array<string, array{0: float, 1: float}>, poles: array<string, array{0: float, 1: float, 2: float}>,
+     *               proj: ?array, owner: array<string, string>, unitsOf: array<string, list<string>>,
      *               unmatched: array<string, list<string>>, missing: list<string>, names: array<string, string>, empty: bool}
      */
     public static function geometry(array $map, array $regions, bool $editor = false): array
@@ -59,7 +60,7 @@ final class Render
             }
             if ($miss) $unmatched[$r['key']] = array_values(array_unique($miss));
         }
-        $out = ['w' => self::WIDTH, 'h' => (int) round(self::WIDTH * 0.6), 'regions' => [], 'rest' => '', 'units' => [], 'lines' => '', 'labels' => [],
+        $out = ['w' => self::WIDTH, 'h' => (int) round(self::WIDTH * 0.6), 'regions' => [], 'rest' => '', 'units' => [], 'lines' => '', 'labels' => [], 'poles' => [], 'proj' => null,
             'owner' => $owner, 'unitsOf' => $unitsOf, 'unmatched' => $unmatched, 'missing' => $data['missing'],
             'names' => $editor ? array_map(fn($u) => $u['name'], $units) : [], 'empty' => !$units, 'neighbors' => self::neighbors($owner, $units)];
         if (!$units) return $out;
@@ -82,6 +83,7 @@ final class Render
         $p = Topo::projection($b, self::WIDTH);
         $out['w'] = $p['width'];
         $out['h'] = $p['height'];
+        $out['proj'] = array_map(fn($v) => round((float) $v, 8), $p['params']);
         $arcs = Topo::project($data['arcs'], Topo::arcCount($drawn), $p['fn'], $editor ? 0.35 : 0.5);
 
         foreach ($unitsOf as $k => $ids) {
@@ -89,7 +91,9 @@ final class Render
             if (!$us) continue;
             $rings = Topo::merge($us, $arcs);
             $out['regions'][$k] = Topo::path($rings);
+            // Beschriftung: bisherige Lage (Bestandskarten, label_mode legacy) und Pol der Unzugänglichkeit (seit 0.3.0)
             $out['labels'][$k] = self::labelPoint($us, $rings, $p['fn']);
+            if (!$editor) $out['poles'][$k] = Labels::pole($rings);
         }
         $rest = array_diff_key($drawn, $owner);
         if ($rest && !$editor) $out['rest'] = Topo::path(Topo::merge($rest, $arcs));
@@ -138,7 +142,10 @@ final class Render
         return false;
     }
 
-    /** Beschriftungspunkt: der Punkt im Inneren einer Einheit, der dem Schwerpunkt der größten Fläche am nächsten liegt */
+    /**
+     * Bisheriger Beschriftungspunkt (bis 0.2.x, Bestandskarten): der Punkt im Inneren einer Einheit, der dem Schwerpunkt der
+     * größten Fläche am nächsten liegt. Neue Karten: Labels::pole() (Pol der Unzugänglichkeit).
+     */
     private static function labelPoint(array $units, array $rings, callable $proj): array
     {
         usort($rings, fn($a, $b) => abs(Topo::area($b)) <=> abs(Topo::area($a)));
@@ -216,22 +223,26 @@ final class Render
     /**
      * Karte als HTML (figure mit SVG, Liste der Gebiete und Quellenvermerk).
      * $o: mode, highlight, action (link|info|none), title (Überschrift für Screenreader, sonst Titel der Karte), assets (bool),
-     *     preview (Verwaltung: ohne Links, ohne Skript), list (bool|null – null = Einstellung der Karte)
+     *     preview (Verwaltung: ohne Links, ohne Skript), list (bool|null – null = Einstellung der Karte),
+     *     labelEdit (Verwaltung: Beschriftungen verschiebbar, auch ausgeschaltete; setzt preview), layout (Rückgabe: Lage je Gebiet)
+     * Beschriftungen: $map['labels'] (Repo, für Entwürfe des Editors überschreibbar), Labels::layout()
      */
-    public static function html(array $map, array $o = []): string
+    public static function html(array $map, array $o = [], ?array &$layout = null): string
     {
-        $regions = Bound::regionsOf($map);
+        $regions = $o['regions'] ?? Bound::regionsOf($map);
         $geo = self::geometry($map, $regions);
         $id = 'gk-' . (int) $map['id'] . '-' . ++self::$count;
-        $preview = !empty($o['preview']);
+        $labelEdit = !empty($o['labelEdit']);
+        $preview = !empty($o['preview']) || $labelEdit;
         $action = $preview ? 'none' : (in_array($o['action'] ?? 'link', ['link', 'info', 'none'], true) ? (string) ($o['action'] ?? 'link') : 'link');
         $active = self::activeKey($regions, (string) ($o['mode'] ?? 'overview'), (string) ($o['highlight'] ?? ''));
         $title = trim((string) ($o['title'] ?? '')) ?: (string) $map['title'];
         $noun = Bases::unitNoun($map['base'], $map['level'], false);
         $nouns = Bases::unitNoun($map['base'], $map['level'], true);
-        $showList = array_key_exists('list', $o) && $o['list'] !== null ? (bool) $o['list'] : (bool) $map['options']['list'];
+        $showList = !$labelEdit && (array_key_exists('list', $o) && $o['list'] !== null ? (bool) $o['list'] : (bool) $map['options']['list']);
 
-        $svg = '<svg class="gk-svg" viewBox="0 0 ' . $geo['w'] . ' ' . $geo['h'] . '" role="group" aria-labelledby="' . $id . '-t" focusable="false" xmlns="http://www.w3.org/2000/svg">'
+        $svg = '<svg class="gk-svg" viewBox="0 0 ' . $geo['w'] . ' ' . $geo['h'] . '" role="group" aria-labelledby="' . $id . '-t" focusable="false" xmlns="http://www.w3.org/2000/svg"'
+            . ($labelEdit && $geo['proj'] ? ' data-gk-proj="' . e(implode(',', $geo['proj'])) . '"' : '') . '>'
             . '<title id="' . $id . '-t">' . e(lt('Karte: {title}', ['title' => $title]) . ($active ? ' – ' . lt('hervorgehoben: {name}', ['name' => self::nameOf($regions, $active)]) : '')) . '</title>';
         if ($geo['rest'] !== '') $svg .= '<path class="gk-rest" d="' . $geo['rest'] . '" fill-rule="evenodd" aria-hidden="true"/>';
         $svg .= '<g class="gk-areas">';
@@ -261,21 +272,18 @@ final class Render
                 $svg .= '<a class="' . $cls . '" href="#' . $id . '-' . e($r['key']) . '" aria-label="' . e(lt('{name}: Informationen', ['name' => $name])) . '" data-gk-info="' . e($r['key']) . '" aria-haspopup="dialog"' . $pv($paint) . '>'
                     . '<title>' . e($name) . '</title>' . $path . '</a>';
             } else {
-                $svg .= '<g class="' . $cls . '"' . $pv($paint) . '><title>' . e($name) . '</title>' . $path . '</g>';
+                $svg .= '<g class="' . $cls . '"' . $pv($paint) . ($labelEdit ? ' data-gk-key="' . e($r['key']) . '"' : '') . '><title>' . e($name) . '</title>' . $path . '</g>';
             }
         }
         $svg .= '</g>';
         if ($map['options']['lines'] && $geo['lines'] !== '') $svg .= '<path class="gk-lines" d="' . $geo['lines'] . '" aria-hidden="true"/>';
-        if ($map['options']['labels']) {
-            $svg .= '<g class="gk-labels" aria-hidden="true">';
-            foreach ($regions as $r) {
-                if (!isset($geo['labels'][$r['key']])) continue;
-                [$x, $y] = $geo['labels'][$r['key']];
-                $svg .= '<text x="' . $x . '" y="' . $y . '"' . ($r['key'] === $active ? ' class="is-active"' : '') . '>' . e($r['name']) . '</text>';
-            }
-            $svg .= '</g>';
-        }
+        // Beschriftungen (Labels): je Gebiet an/aus, Text, Lage, Größe, Stil; Bestandskarten wie bisher
+        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
+        $layout = Labels::layout($map, $regions, $geo, $effs, $labelEdit, $labelEdit);
+        $pole = ($map['options']['label_mode'] ?? 'legacy') === 'pole';
+        $svg .= Labels::svg($layout, $id, $pole, $active, $labelEdit);
         $svg .= '</svg>';
+        $darkTones = Labels::needsDarkTones($layout);
 
         // Liste: Name (Link) – mit Info-Fenster zusätzlich die Angaben je Gebiet (Ziel der Links in der Karte, ohne JavaScript)
         $items = '';
@@ -301,9 +309,10 @@ final class Render
         }
         $pop = $action === 'info' ? '<div class="gk-pop" role="dialog" aria-modal="false" hidden data-gk-pop><button type="button" class="gk-pop__close" data-gk-close aria-label="' . e(lt('Schließen')) . '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13"/></svg></button><div class="gk-pop__body" data-gk-body></div></div>' : '';
 
-        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs, $palDark) : '')
-            . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
-            . $empty . '<div class="gk-map">' . $svg . $pop . '</div>'
+        $help = $labelEdit ? '<p class="adm-sr" id="' . $id . '-labhelp">' . e(__('Ziehen oder Pfeiltasten verschieben die Beschriftung, Umschalt+Pfeil in großen Schritten.')) . '</p>' : '';
+        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs, $palDark, $darkTones) : '')
+            . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . ($pole ? ' gk--lab2' : '') . ($labelEdit ? ' gk--labedit' : '') . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
+            . $empty . $help . '<div class="gk-map">' . $svg . $pop . '</div>'
             . '<figcaption class="gk-cap">' . $cap . '</figcaption></figure>';
     }
 
@@ -432,17 +441,14 @@ final class Render
         }
         $s .= '</g>';
         if ($map['options']['lines'] && $geo['lines'] !== '') $s .= '<path id="grenzen" d="' . $geo['lines'] . '" fill="none" stroke="' . $kit['bg'] . '" stroke-opacity="0.6" stroke-width="0.6"/>';
-        $s .= '<g id="namen" font-family="system-ui, sans-serif" font-size="15" font-weight="600" text-anchor="middle" fill="' . $kit['ink'] . '" stroke="' . $kit['bg'] . '" stroke-width="3" paint-order="stroke">';
-        foreach ($regions as $r) {
-            if (!isset($geo['labels'][$r['key']])) continue;
-            $s .= '<text x="' . $geo['labels'][$r['key']][0] . '" y="' . $geo['labels'][$r['key']][1] . '">' . $x((string) $r['name']) . '</text>';
-        }
+        // Namen: Lage, Text, Größe und Ton wie auf der Website (Labels), feste Farben
+        $s .= Labels::export(Labels::layout($map, $regions, $geo, $effs), $kit);
         // Quellenvermerk: derselbe Wortlaut wie unter der Karte (Links als Adresse – der Grafik-Editor und <img> kennen keine Links),
         // dazu Lizenz und Vermerk in <desc>; zweizeilig, damit er in die Breite passt
         $a = Bases::attribution($map['base'], $map['level']);
         $line1 = lt('Kartengrundlage') . ': ' . $a['text'] . ', ' . lt('vereinfacht');
         $line2 = lt('Datenquellen') . ': ' . $a['sources'] . ' · ' . lt('Lizenz') . ': ' . $a['url'];
-        $s .= '</g><text id="quelle" x="' . ($geo['w'] - 12) . '" y="' . ($h - 24) . '" font-family="system-ui, sans-serif" font-size="11" text-anchor="end" fill="' . $kit['muted'] . '">'
+        $s .= '<text id="quelle" x="' . ($geo['w'] - 12) . '" y="' . ($h - 24) . '" font-family="system-ui, sans-serif" font-size="11" text-anchor="end" fill="' . $kit['muted'] . '">'
             . '<tspan x="' . ($geo['w'] - 12) . '">' . $x($line1) . '</tspan><tspan x="' . ($geo['w'] - 12) . '" dy="14">' . $x($line2) . '</tspan></text></svg>';
         return $s;
     }

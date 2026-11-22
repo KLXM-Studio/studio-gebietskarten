@@ -1,5 +1,26 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.3.0 (2026-11-22)
+
+- **Beschriftungen im Karteneditor:** neuer Abschnitt „Beschriftungen“ mit der Karte wie auf der Website (hell/dunkel). Je Gebiet: zeigen/ausblenden
+  (auch einzelne Gebiete bei ausgeschalteten Namen), eigener Text (Kurzname, Zeilenumbruch, höchstens 3 Zeilen), Lage per Ziehen (Maus, Stift, Finger)
+  oder Pfeiltasten (Umschalt = 10er-Schritte), „Lage zurücksetzen“, **Hinweislinie** mit eigenem, verschiebbarem Ankerpunkt für kleine Gebiete.
+  Jede Änderung zeichnet die Karte sofort neu (Entwurf), gespeichert wird mit „Beschriftungen speichern“.
+- **Gestaltung je Karte und je Gebiet:** Schriftgröße S/M/L oder automatisch nach Fläche (größte, die ganz ins Gebiet passt), Stil „automatisch
+  hell/dunkel“ (bessere Schriftfarbe zur Gebietsfarbe, hell und im Dunkeln getrennt), „Schrift des Kits mit Kontrastrand“ (bisher), dunkel, hell,
+  Etikett mit Hintergrund; Großbuchstaben. **Kontrastprüfung** hell/dunkel mit Warnung unter 4,5:1 und Hinweis, wenn der Text nicht ins Gebiet passt.
+- **Automatische Lage:** Pol der Unzugänglichkeit (Mitte der größten freien Fläche, polylabel) statt Schwerpunkt-Näherung. **Bestandskarten bleiben
+  unverändert** (Optionen ohne `label_mode` → bisherige Lage, Größe M, Schrift des Kits; Ausgabe Zeichen für Zeichen wie 0.2.1, Pixelvergleich
+  Desktop/Telefon, hell/dunkel); der Knopf „Automatisch neu setzen“ stellt eine Karte bewusst auf die neue Lage um.
+- **Telefon-Regel** (Karten mit neuer Lage): unter 36rem Kartenbreite Schrift 1,6-fach im Kartenmaß, sonst nächstkleinere Größe, ohne Platz (und mit
+  Hinweislinie) ausgeblendet – per Container-Abfrage, ohne Skript.
+- **Datentabellen:** Lage und Gestaltung je Eintrag in der Karte (Kartenmetadaten); Text optional aus einem Feld der Einträge (Bindung „Beschriftung in
+  der Karte“, Text oder Textfeld) – im Editor änderbar, geschrieben mit `Entries::save()` (Rechte, Version mit Notiz, Protokoll, Status bleibt).
+- Ausgabe weiter reines SVG ohne `style`-Attribute und Skripte (Klassen, `tspan`, Etikett als SVG-Filter mit Farbe per CSS, Dunkel-Ton in der erzeugten
+  Datei `farben-….css`); SVG-Export übernimmt Lage, Text, Größe und Ton (Namen nur noch, wenn sie auch auf der Website erscheinen).
+- Neue Spalte `gebietskarten_maps.labels` (`php bin/console migrate --all`), Route `POST …/{id}/beschriftung` und `…/beschriftung/automatisch`.
+- Selbsttest erweitert (114 Prüfungen), Handbuch, Entwicklerhandbuch, englische Texte.
+
 ## 0.2.1 (2026-11-21)
 
 - **Automatische Farben ohne Grau, Nachbarn verschieden:** Die automatische Palette vergibt kein Grau mehr (sah aus wie „nicht zugeordnet“;

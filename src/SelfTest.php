@@ -14,7 +14,9 @@ use Core\Data\Tables;
  * Inline-Skripte, Zugänglichkeit des SVG (Titel, Namen der Links, Liste), Quellenvermerk (überall gleich), Nachladen mit
  * Prüfsumme; seit 0.2.0: Reihenfolge, eigene Farben im Dunkeln (Kontrast der Beschriftung, Dunkel-Regel als Datei),
  * Kit-Farben wie auf der Website (Stylesheet + Design-Werte), Zuordnung per Klick in Einträge einer Datentabelle (Rechte,
- * Status, Version, Protokoll). Legt Testdaten (Karten, Tabelle, zwei Konten) an und entfernt sie danach wieder.
+ * Status, Version, Protokoll); seit 0.3.0 Beschriftungen (Pol der Unzugänglichkeit, Größe nach Fläche, Text mit Zeilenumbruch,
+ * Stil und Kontrast, Hinweislinie, Telefon-Regel, Bestandskarten unverändert, Text aus Einträgen). Legt Testdaten (Karten,
+ * Tabelle, zwei Konten) an und entfernt sie danach wieder.
  */
 final class SelfTest
 {
@@ -54,6 +56,8 @@ final class SelfTest
         self::order();
         echo "Quellenvermerk (überall gleich)\n";
         self::attribution();
+        echo "Beschriftungen (Lage, Text, Größe, Stil, Hinweislinie, Bestandskarten)\n";
+        self::labels();
         echo "Zuordnung per Klick in Einträge (Datentabelle)\n";
         self::entryAssign();
         echo "Nachladen (Prüfsumme)\n";
@@ -367,6 +371,132 @@ final class SelfTest
      * Zuordnung per Klick bei Karten aus einer Datentabelle: Feld der Einträge über Entries::save – Schreibweise der Tabelle,
      * Werte außerhalb der Karte bleiben, Rechte (Autorin ohne Veröffentlichungsrecht), Version mit Notiz, Protokoll.
      */
+    /** Beschriftungen (seit 0.3.0) */
+    private static function labels(): void
+    {
+        // Geometrie: U-Form – Schwerpunkt liegt außerhalb, der Pol innen mit dem größten Abstand zum Rand
+        $u = [[[0, 0], [30, 0], [30, 30], [20, 30], [20, 10], [10, 10], [10, 30], [0, 30], [0, 0]]];
+        $segs = Labels::segments($u);
+        [$px, $py, $pd] = Labels::pole($u, 0.1);
+        self::t(Labels::dist(15, 13.6, $segs) < 0 && Labels::dist($px, $py, $segs) > 0 && $pd >= 5 && $pd < 6.5, 'Pol der Unzugänglichkeit: innen, auch wo der Schwerpunkt außerhalb liegt (U-Form)', "$px,$py,$pd");
+        [$qx, $qy] = Labels::pole([[[0, 0], [100, 0], [100, 60], [0, 60], [0, 0]]], 0.1);
+        self::t(abs($qx - 50) < 1 && abs($qy - 30) < 1, 'Pol eines Rechtecks: Mitte');
+        $sq = Labels::segments(Labels::parse(Topo::path([[[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]]])));
+        self::t(count($sq) === 4 && Labels::boxInside($sq, 50, 50, 60, 20) && !Labels::boxInside($sq, 50, 50, 120, 20) && !Labels::boxInside($sq, 95, 50, 20, 10), 'Platz: Text ganz im Gebiet oder nicht (aus dem SVG-Pfad)');
+        $proj = [5.8, 52.5, 270.1, 433.2, 16.0, 16.0];
+        $xy = Labels::toSvg($proj, [7.4, 51.36]);
+        $ll = Labels::toGeo($proj, $xy[0], $xy[1]);
+        self::t(abs($ll[0] - 7.4) < 0.001 && abs($ll[1] - 51.36) < 0.001, 'Lage als Länge/Breite ↔ Karte (unabhängig vom Ausschnitt)');
+        $c = Labels::cleanAll(['r1' => ['show' => 'on', 'text' => " Ober-\r\nbayern \n\n Süd\nx\ny", 'pos' => [7.1, 51.2], 'anchor' => [7, 51], 'size' => 'xl', 'style' => 'evil', 'caps' => 'on'],
+            'x9' => ['show' => 'on'], 'r2' => ['pos' => [500, 1], 'anchor' => [7, 51]], 'r3' => []]);
+        self::t($c === ['r1' => ['show' => 'on', 'text' => "Ober-\nbayern\nSüd", 'pos' => [7.1, 51.2], 'caps' => 'on']], 'Einstellungen bereinigt (höchstens 3 Zeilen, Anker nur mit Hinweislinie, unbekannte Werte und Schlüssel fallen weg)', json_encode($c, JSON_UNESCAPED_UNICODE) ?: '');
+
+        $ids = [];
+        try {
+            // Bestandskarte: Optionen ohne label_mode (wie vor 0.3.0) → bisherige Lage, M, Schrift des Kits
+            $old = (int) app()->db->insert(Repo::MAPS, ['title' => 'Selbsttest Bestand', 'base' => 'de', 'level' => 'kreise', 'scope' => '05', 'source' => 'own',
+                'binding' => '{}', 'options' => json_encode(['rest' => true, 'fit' => 'scope', 'lines' => true, 'labels' => true, 'list' => true]), 'created_at' => now(), 'updated_at' => now()]);
+            $ids[] = $old;
+            $ra = Repo::saveRegion($old, null, ['name' => 'Nord', 'units' => '05170, 05154, 05166, 05158']);
+            Repo::saveRegion($old, null, ['name' => 'Hagen', 'units' => '05914']);
+            $m = (array) Repo::map($old);
+            self::t($m['options']['label_mode'] === 'legacy' && $m['options']['label_size'] === 'm' && $m['options']['label_style'] === 'kit' && !$m['options']['label_caps'], 'Bestandskarte: bisherige Lage, Größe M, Schrift des Kits');
+            Render::reset();
+            $html = Render::html($m);
+            $geo = Render::geometry($m, Bound::regionsOf($m));
+            [$lx, $ly] = $geo['labels']['r' . $ra];
+            self::t(str_contains($html, '<g class="gk-labels" aria-hidden="true"><text x="' . $lx . '" y="' . $ly . '">Nord</text>') && !str_contains($html, 'gk--lab2'), 'Bestandskarte: Ausgabe wie vor 0.3.0 (gleiche Lage, gleiche Auszeichnung)');
+            Repo::saveMap($old, ['title' => 'Selbsttest Bestand', 'level' => 'kreise', 'scope' => ['05'], 'options' => $m['options']]);
+            self::t(((array) Repo::map($old))['options']['label_mode'] === 'legacy', 'Einstellungen speichern ändert die Lage nicht');
+            Repo::saveLabels($old, ['r' . $ra => ['pos' => [6.5, 51.6], 'text' => 'N']], 'legacy');
+            Repo::saveLabels($old, Labels::resetPositions(((array) Repo::map($old))['labels']), 'pole');
+            $m = (array) Repo::map($old);
+            self::t($m['options']['label_mode'] === 'pole' && $m['labels'] === ['r' . $ra => ['text' => 'N']], '„Automatisch neu setzen“: neue Lage, eigene Texte bleiben');
+
+            // Neue Karte: Pol, Größe nach Fläche, Stil automatisch
+            $new = Repo::saveMap(null, ['title' => 'Selbsttest Beschriftung', 'level' => 'kreise', 'scope' => ['05'], 'options' => ['labels' => true] + Repo::OPTIONS]);
+            $ids[] = $new;
+            $big = Repo::saveRegion($new, null, ['name' => 'Münsterland', 'units' => '05515, 05554, 05558, 05566, 05570', 'color' => 'p4']);
+            $small = Repo::saveRegion($new, null, ['name' => 'Hagen', 'units' => '05914', 'color' => '#0b2a5b']);
+            $third = Repo::saveRegion($new, null, ['name' => 'Rheinland mit sehr langem Namen', 'units' => '05315, 05362, 05382']);
+            $m = (array) Repo::map($new);
+            self::t($m['options']['label_mode'] === 'pole' && $m['options']['label_size'] === 'auto' && $m['options']['label_style'] === 'auto', 'neue Karte: Pol der Unzugänglichkeit, Größe und Stil automatisch');
+            $regions = Bound::regionsOf($m);
+            $geo = Render::geometry($m, $regions);
+            $lay = Labels::layout($m, $regions, $geo, Colors::assign($regions, $geo['neighbors']), false, true);
+            $B = $lay['r' . $big];
+            $S = $lay['r' . $small];
+            self::t($B['size'] === 'l' && $B['fits'] && $S['size'] === 's', 'Größe nach Fläche: großes Gebiet L, Hagen S', $B['size'] . '/' . $S['size']);
+            self::t(Labels::boxInside(Labels::segments(Labels::parse($geo['regions']['r' . $big])), $B['x'], $B['y'], $B['w'], $B['h']), 'Text liegt ganz im Gebiet');
+            self::t($B['toneL'] === 'd' && $S['toneL'] === 'l' && $S['cL'] >= Colors::MIN_LABEL && $B['cL'] >= Colors::MIN_LABEL, 'Stil automatisch: dunkle Schrift auf Gelb, helle auf Dunkelblau (Kontrast ≥ 4,5:1)', "{$B['toneL']} {$B['cL']} / {$S['toneL']} {$S['cL']}");
+            self::t(!$S['fitsPhone'] && $B['fitsPhone'] !== null, 'Telefon-Regel: Hagen hat zu wenig Platz');
+
+            Repo::saveLabels($new, [
+                'r' . $small => ['leader' => true, 'pos' => [7.9, 51.2], 'style' => 'tag'],
+                'r' . $third => ['text' => "Rheinland\nSüd", 'caps' => 'on', 'size' => 'm'],
+                'r' . $big => ['show' => 'off'],
+            ]);
+            $m = (array) Repo::map($new);
+            Render::reset();
+            $html = Render::html($m, ['action' => 'link']);
+            $geo = Render::geometry($m, Bound::regionsOf($m));
+            [$sx, $sy] = Labels::toSvg($geo['proj'], [7.9, 51.2]);
+            self::t(!preg_match('~\sstyle\s*=~i', $html) && !preg_match('~<script(?![^>]*\bsrc=)~i', $html), 'Website: keine style-Attribute, keine Inline-Skripte (auch mit allen Beschriftungs-Optionen)');
+            self::t(str_contains($html, 'gk--lab2') && str_contains($html, '<g class="gk-labels" aria-hidden="true">') && str_contains($html, '<title>Hagen</title>'), 'Beschriftungen aria-hidden, Namen an den Gebieten zugänglich');
+            self::t((bool) preg_match('~<path class="gk-leader gk-lh" d="M[\d. ]+L[\d. ]+"/><circle class="gk-anchor gk-lh" [^>]+/><text x="' . preg_quote((string) $sx, '~') . '" y="' . preg_quote((string) $sy, '~') . '" class="[^"]*gk-tag[^"]*" filter="url\(#gk-' . $new . '-\d+-tag\)">Hagen</text>~', $html)
+                && str_contains($html, '<feFlood class="gk-tagbg"'), 'Hinweislinie mit Ankerpunkt, Lage von Hand, Etikett (Filter), auf dem Telefon ausgeblendet');
+            self::t((bool) preg_match('~<text x="[\d.]+" y="[\d.]+" class="[^"]*gk-lc[^"]*"><tspan x="[\d.]+" dy="-0\.575em">Rheinland</tspan><tspan x="[\d.]+" dy="1\.15em">Süd</tspan></text>~', $html), 'Zeilenumbruch als tspan, Großbuchstaben als Klasse');
+            self::t(!str_contains($html, '>Münsterland</text>'), 'je Gebiet ausblenden');
+            Repo::saveMap($new, ['title' => 'Selbsttest Beschriftung', 'level' => 'kreise', 'scope' => ['05'], 'options' => ['labels' => false] + $m['options']]);
+            Repo::saveLabels($new, ['r' . $big => ['show' => 'on']]);
+            Render::reset();
+            $html = Render::html((array) Repo::map($new));
+            self::t(str_contains($html, 'Münsterland</text>') && !str_contains($html, 'Hagen</text>'), 'Namen der Karte aus, einzelnes Gebiet trotzdem an');
+            $ed = Render::html((array) Repo::map($new), ['labelEdit' => true, 'assets' => false]);
+            self::t(str_contains($ed, 'gk-labels--edit') && !str_contains($ed, 'gk-labels" aria-hidden') && preg_match_all('~<rect class="gk-lab__box"[^>]+tabindex="0" role="button"[^>]+aria-label="[^"]+"~', $ed) === 3
+                && str_contains($ed, 'data-gk-proj="'), 'Editor: alle Beschriftungen fokussierbar (Name, Rolle), auch ausgeblendete; Projektion für das Ziehen');
+            $svg = Render::svg((array) Repo::map($new));
+            self::t(@simplexml_load_string($svg) !== false && str_contains($svg, '>Münsterland</tspan>') && !str_contains($svg, 'class="'), 'SVG-Export: Beschriftungen mit festen Farben, gültig');
+            $css = Colors::sheetCss([], ['media' => '(prefers-color-scheme: dark)', 'scope' => 'html.has-dark', 'extra' => []], [], true);
+            self::t(str_contains($css, 'html.has-dark .gk-labels .gk-tdk-l{fill:var(--gk-lab-light)'), 'Stil automatisch im Dunkeln: Regel in der erzeugten Datei');
+            Repo::deleteRegion($new, $big);
+            self::t(!isset(((array) Repo::map($new))['labels']['r' . $big]), 'Gebiet gelöscht: Beschriftung entfernt');
+        } catch (\Throwable $e) {
+            self::t(false, 'Beschriftungen', $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine());
+        } finally {
+            foreach ($ids as $id) Repo::deleteMap($id);
+        }
+
+        // Datentabelle: Text aus einem Feld der Einträge, Lage in der Karte; ohne Recht kein Schreiben
+        $h = 'gk_selftest_' . bin2hex(random_bytes(3));
+        $mapId = 0;
+        try {
+            [$def, $err] = Tables::validate(['name' => 'Selbsttest Beschriftung', 'handle' => $h, 'fields' => [
+                ['label' => 'Name', 'type' => 'text', 'required' => 1], ['label' => 'Kreise', 'type' => 'textarea'], ['label' => 'Kurz', 'type' => 'text'],
+            ]]);
+            if ($err) { self::t(false, 'Datentabelle angelegt', json_encode($err) ?: ''); return; }
+            Tables::create($def);
+            $t = (array) Tables::find($h);
+            [$e1] = Entries::save($t, null, ['name' => 'Regionalgruppe Niederrhein', 'kreise' => 'Wesel, Kleve', 'kurz' => 'NR', 'status' => 'published']);
+            $mapId = Repo::saveMap(null, ['title' => 'Selbsttest Tabelle Beschriftung', 'level' => 'kreise', 'scope' => ['05'], 'source' => 'table',
+                'binding' => ['table' => $h, 'units' => 'kreise', 'label' => 'kurz'], 'options' => ['labels' => true] + Repo::OPTIONS]);
+            $map = (array) Repo::map($mapId);
+            Repo::saveLabels($mapId, ['e' . $e1 => ['pos' => [6.4, 51.6]], 'e999' => ['show' => 'on']]);
+            $map = (array) Repo::map($mapId);
+            self::t(array_keys($map['labels']) === ['e' . $e1], 'Kartenmetadaten: Lage je Eintrag, fremde Schlüssel fallen weg');
+            Render::reset();
+            $html = Render::html($map);
+            self::t(str_contains($html, '>NR</text>'), 'Text aus dem Feld „Kurz“ des Eintrags');
+            $res = Labels::saveEntryTexts($map, Bound::regionsOf($map), ['e' . $e1 => 'Niederrhein']);
+            self::t($res['saved'] === 0 && isset($res['errors']['e' . $e1]), 'ohne Recht „Daten bearbeiten“: Text im Eintrag bleibt');
+        } catch (\Throwable $e) {
+            self::t(false, 'Beschriftung aus Datentabelle', $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine());
+        } finally {
+            if ($mapId) Repo::deleteMap($mapId);
+            if ($x = Tables::find($h)) Tables::delete($x);
+        }
+    }
+
     private static function entryAssign(): void
     {
         $units = Bases::units('de', 'kreise', ['05'])['units'];

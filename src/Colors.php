@@ -252,16 +252,21 @@ final class Colors
      * @param array{media: string, scope: string, extra: list<string>}|null $rule
      * @param array<string, string> $palette  Palettenfarbe (p1 …) → Dunkel-Wert
      */
-    public static function sheetCss(array $pairs, ?array $rule, array $palette = []): string
+    public static function sheetCss(array $pairs, ?array $rule, array $palette = [], bool $labelTones = false): string
     {
-        if ((!$pairs && !$palette) || !$rule) return '';
-        $body = static function (string $pre) use ($pairs, $palette): string {
+        if ((!$pairs && !$palette && !$labelTones) || !$rule) return '';
+        $body = static function (string $pre) use ($pairs, $palette, $labelTones): string {
             $out = [];
             foreach ($pairs as [$l, $d]) {
                 $c = '.' . self::pairClass($l, $d);
                 $out[] = $pre . ' ' . $c . ' path,' . $pre . ' ' . $c . ' rect{fill:' . $d . '}';
             }
             foreach ($palette as $k => $d) $out[] = $pre . ' .gk-c-' . $k . '{--gk-c:' . $d . '}';
+            // Beschriftung „automatisch hell/dunkel“: im Dunkeln anderer Ton als hell (Labels::tone mit den Dunkel-Farben)
+            if ($labelTones) {
+                $out[] = $pre . ' .gk-labels .gk-tdk-d{fill:var(--gk-lab-dark);stroke:var(--gk-lab-light);stroke-width:4px}';
+                $out[] = $pre . ' .gk-labels .gk-tdk-l{fill:var(--gk-lab-light);stroke:var(--gk-lab-dark);stroke-width:3px}';
+            }
             return implode("\n", $out);
         };
         $css = $rule['media'] !== '' ? '@media ' . $rule['media'] . "{\n" . $body($rule['scope']) . "\n}\n" : $body($rule['scope']) . "\n";
@@ -274,8 +279,9 @@ final class Colors
      * Website (gebietskarten/farben-{prüfsumme}.css, wie die Design-Datei des Cores) – keine Inline-Stile auf der Website.
      * @param list<array{0: string, 1: string}> $pairs [hell, dunkel]
      * @param array<string, string> $palette  Palettenfarbe → Dunkel-Wert
+     * @param bool $labelTones  Regeln für Beschriftungen mit anderem Ton im Dunkeln (Labels::needsDarkTones)
      */
-    public static function sheet(array $pairs, array $palette = []): string
+    public static function sheet(array $pairs, array $palette = [], bool $labelTones = false): string
     {
         $clean = [];
         foreach ($pairs as [$l, $d]) {
@@ -287,11 +293,11 @@ final class Colors
             $d = self::hex((string) $d);
             if (isset(self::PALETTE[$k]) && $d !== '') $pal[(string) $k] = $d;
         }
-        if (!$clean && !$pal) return '';
+        if (!$clean && !$pal && !$labelTones) return '';
         ksort($clean);
         ksort($pal, SORT_NATURAL);
         $pairs = array_values($clean);
-        $css = self::sheetCss($pairs, self::darkRule(), $pal);
+        $css = self::sheetCss($pairs, self::darkRule(), $pal, $labelTones);
         if ($css === '') return '';
         $name = 'farben-' . substr(sha1($css), 0, 12) . '.css';
         $dir = site()->mediaDir('gebietskarten');

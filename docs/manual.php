@@ -43,7 +43,41 @@
     4,5:1 Kontrast haben. Unter den Farbfeldern sehen Sie den Kontrast der Beschriftung hell und im Dunkeln; liegt er unter 4,5:1, steht ein Hinweis
     daneben. Ihre eigene helle Farbe ändert Studio nie. Ob die Website überhaupt dunkel erscheint, stellen Sie unter <b>Design</b> ein („Dunkelmodus anbieten“).</p>
   <p>Unter <b>Einstellungen der Karte</b> legen Sie fest, ob Flächen ohne Gebiet grau erscheinen, ob die Grenzen innerhalb der Gebiete und
-    die Namen in der Karte zu sehen sind, ob die Liste der Gebiete unter der Karte steht und ob der Ausschnitt nur bis zum Rand der Gebiete reicht.</p>
+    die Namen in der Karte zu sehen sind (Gestaltung der Namen: siehe <a href="#gebietskarten-beschriftungen">Beschriftungen</a>), ob die Liste der Gebiete unter der Karte steht und ob der Ausschnitt nur bis zum Rand der Gebiete reicht.</p>
+
+  <h3 id="gebietskarten-beschriftungen">Beschriftungen</h3>
+  <p>Die Namen in der Karte gestalten Sie im Abschnitt <b>Beschriftungen</b> unter der Karte. Er zeigt die Karte wie auf der Website (mit den
+    Schaltern <b>Hell</b> und <b>Dunkel</b>); rechts stellen Sie das gewählte Gebiet ein. Ein Klick auf ein Gebiet oder eine Beschriftung wählt es aus.</p>
+  <ul>
+    <li><b>Beschriftung</b> – <i>wie Karte</i>, <i>zeigen</i> oder <i>ausblenden</i>. So können Sie die Namen der Karte ausschalten und nur einzelne Gebiete
+      beschriften – oder umgekehrt. Ausgeblendete Beschriftungen erscheinen im Editor blass, damit Sie sie wiederfinden.</li>
+    <li><b>Text</b> – leer bedeutet: der Name des Gebiets. Für lange Namen tragen Sie einen Kurznamen ein („Oberbayern-Süd“ statt „Regionalgruppe
+      Oberbayern-Süd und Werdenfelser Land“) oder brechen mit <kbd>Enter</kbd> um (höchstens drei Zeilen). Liste, Info-Fenster und Screenreader nennen
+      weiter den vollen Namen.</li>
+    <li><b>Lage</b> – ziehen Sie die Beschriftung mit der Maus (oder dem Finger) an ihren Platz. Mit der Tastatur: <kbd>Tab</kbd> bis zur Beschriftung,
+      dann die Pfeiltasten (<kbd>Umschalt</kbd>+Pfeil für große Schritte). <b>Lage zurücksetzen</b> stellt die automatische Lage wieder her.</li>
+    <li><b>Hinweislinie</b> – für kleine Gebiete wie eine kreisfreie Stadt: Der Text steht außerhalb, eine dünne Linie führt zu einem Punkt im Gebiet.
+      Text und Ankerpunkt verschieben Sie getrennt (der Ankerpunkt ist ein eigener Griff, auch mit der Tastatur).</li>
+    <li><b>Schriftgröße</b> (Klein, Mittel, Groß oder <i>automatisch nach Fläche</i> – die größte, die ganz ins Gebiet passt), <b>Stil</b> und
+      <b>Großbuchstaben</b> – je Gebiet oder <i>wie Karte</i>.</li>
+  </ul>
+  <p><b>Stile:</b> <i>Automatisch hell oder dunkel</i> wählt je Gebiet die Schriftfarbe mit dem besseren Kontrast zur Gebietsfarbe – hell und im
+    dunklen Farbschema getrennt. <i>Schrift des Kits mit Kontrastrand</i> ist die bisherige Darstellung, <i>dunkel</i> und <i>hell</i> legen die
+    Schriftfarbe fest, <i>Etikett</i> setzt den Namen auf ein dunkles Schild. Rechts sehen Sie Größe, Schriftfarbe und den Kontrast hell und im Dunkeln;
+    unter 4,5:1 erscheint eine Warnung, ebenso, wenn der Text nicht ganz in sein Gebiet passt.</p>
+  <p>Die Voreinstellungen der ganzen Karte (Schriftgröße, Stil, Großbuchstaben, Namen an/aus) stehen unter <b>Einstellungen der Karte</b>.
+    Änderungen sehen Sie sofort in der Karte; sie gelten erst nach <b>Beschriftungen speichern</b>.</p>
+  <p><b>Automatische Lage:</b> Studio setzt jeden Namen in die Mitte der größten freien Fläche seines Gebiets – auch bei Gebieten mit Ausbuchtungen,
+    bei denen der Schwerpunkt außerhalb läge. Karten, die vor Version 0.3.0 angelegt wurden, behalten ihre bisherige Lage, damit sich auf der Website nichts
+    verschiebt. Mit <b>Automatisch neu setzen</b> stellen Sie eine Karte auf die neue Berechnung um (von Hand gesetzte Lagen gehen dabei verloren,
+    eigene Texte und Stile bleiben).</p>
+  <p><b>Auf dem Telefon</b> (Karte schmaler als rund 576 Pixel) wird die Schrift größer, damit sie lesbar bleibt. Passt ein Name dann nicht
+    mehr ganz in sein Gebiet, nimmt er die nächstkleinere Größe; passt auch die kleinste nicht – und bei allen Namen mit Hinweislinie –, entfällt er dort.
+    Die Namen stehen weiter an den Gebieten (Screenreader, Tastatur) und in der Liste unter der Karte. Das gilt für Karten mit der neuen automatischen Lage.</p>
+  <p><b>Karten aus einer Datentabelle:</b> Lage und Gestaltung speichert die Karte je Eintrag. Für den Text können Sie unter <b>Einstellungen der Karte</b>
+    ein Feld der Tabelle wählen (<b>Beschriftung in der Karte</b>, Text oder Textfeld, z. B. „Kurzname“): Dann steht der Text im Eintrag – sichtbar und
+    änderbar auch in der Datentabelle – und <b>Beschriftungen speichern</b> schreibt ihn mit Version und Protokoll in den Eintrag, sofern Ihre Rolle den
+    Eintrag ändern darf.</p>
 
   <h3 id="gebietskarten-block">Block „Gebietskarte“</h3>
   <table class="doc-table">

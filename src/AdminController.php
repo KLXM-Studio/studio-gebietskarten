@@ -70,10 +70,77 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
                 if ($why !== null) $locked[(int) $reg['id']] = $why;
             }
         }
+        // Beschriftungen: Editor-Karte (verschiebbar) und je Gebiet, ob der Text hier änderbar ist (Datentabelle mit Feld „label“)
+        $layout = [];
+        $labelBox = Render::html($m, ['labelEdit' => true, 'assets' => false, 'regions' => $regions], $layout);
+        $textLock = [];
+        if ($table && Labels::field($table, $m)) {
+            foreach ($regions as $reg) if (($why = Labels::textReason($table, $m, $reg)) !== null) $textLock[$reg['key']] = $why;
+        }
         return Gebietskarten::page('edit', ['map' => $m, 'regions' => $regions, 'geo' => $geo, 'table' => $table, 'editRegion' => $edit,
             'tables' => self::tableOptions(), 'preview' => Render::html($m, ['preview' => true, 'assets' => false]),
             'kitLight' => Preview::kit(false), 'kitDark' => Preview::kit(true), 'darkOn' => Preview::darkOn(),
-            'assignReason' => $assignReason, 'locked' => $locked]);
+            'assignReason' => $assignReason, 'locked' => $locked, 'labelBox' => $labelBox, 'labelInfo' => self::labelInfo($layout),
+            'labelBound' => $table && Labels::field($table, $m), 'textLock' => $textLock]);
+    }
+
+    /** Angaben je Beschriftung für das Formular des Editors (Lage, Größe, Ton, Kontrast, Platz) */
+    private static function labelInfo(array $layout): array
+    {
+        $out = [];
+        foreach ($layout as $k => $l) {
+            $out[$k] = array_intersect_key($l, array_flip(['visible', 'manual', 'leader', 'anchorManual', 'size', 'fits', 'fitsPhone', 'style', 'toneL', 'toneD', 'cL', 'cD']));
+        }
+        return $out;
+    }
+
+    /**
+     * Beschriftungen: JSON {"labels": {"r12": {show, text, pos, anchor, leader, size, style, caps}}, "texts": {"e3": "…"}, "draft": bool}.
+     * draft = nur neu zeichnen (Vorschau beim Ziehen und Ändern), sonst speichern. Datentabelle mit Feld „label“: Texte gehen in die
+     * Einträge (Regeln des Cores wie bei der Zuordnung), Lage und Gestaltung in die Karte (Kartenmetadaten).
+     */
+    public function labels(Request $r, string $id): Response
+    {
+        $m = $this->mapOr404($id);
+        $regions = Bound::regionsOf($m);
+        $clean = Labels::cleanAll($r->post['labels'] ?? [], array_column($regions, 'key'));
+        $draft = filter_var($r->post['draft'] ?? false, FILTER_VALIDATE_BOOL);
+        $table = $m['source'] === 'table' ? Bound::table($m) : null;
+        $bound = $table && Labels::field($table, $m);
+        $texts = $bound && is_array($r->post['texts'] ?? null) ? array_map(fn($t) => is_scalar($t) ? (string) $t : '', $r->post['texts']) : [];
+        if ($bound) foreach ($clean as $k => $sx) { unset($sx['text']); if ($sx) $clean[$k] = $sx; else unset($clean[$k]); }
+        $errors = [];
+        $saved = 0;
+        if (!$draft) {
+            if ($texts) {
+                $res = Labels::saveEntryTexts($m, $regions, $texts);
+                $errors = $res['errors'];
+                $saved = $res['saved'];
+            }
+            Repo::saveLabels($m['id'], $clean);
+            $m = (array) Repo::map($m['id']);
+            $regions = Bound::regionsOf($m);
+        } else {
+            $m['labels'] = $clean;
+            foreach ($regions as $i => $reg) {
+                if (array_key_exists($reg['key'], $texts) && Labels::textReason($table, $m, $reg) === null) $regions[$i]['label_field'] = Labels::cleanText($texts[$reg['key']]);
+            }
+        }
+        $layout = [];
+        $box = Render::html($m, ['labelEdit' => true, 'assets' => false, 'regions' => $regions], $layout);
+        $msg = $draft ? '' : ($errors ? __('Beschriftungen gespeichert, nicht gespeichert: {list}', ['list' => implode(' · ', $errors)])
+            : ($saved === 1 ? __('Beschriftungen gespeichert (1 Eintrag geändert).') : ($saved ? __('Beschriftungen gespeichert ({n} Einträge geändert).', ['n' => $saved]) : __('Beschriftungen gespeichert.'))));
+        return Response::json(['ok' => !$errors, 'message' => $msg, 'box' => $box, 'info' => (object) self::labelInfo($layout),
+            'texts' => (object) array_column(array_map(fn($x) => ['k' => $x['key'], 't' => Labels::text($x, (array) ($m['labels'][$x['key']] ?? []))], $regions), 't', 'k'),
+            'preview' => $draft ? null : Render::html($m, ['preview' => true, 'assets' => false])]);
+    }
+
+    /** „Automatisch neu setzen“: alle Beschriftungen an den Pol der Unzugänglichkeit (auch Bestandskarten), eigene Texte und Stile bleiben */
+    public function labelsAuto(Request $r, string $id): Response
+    {
+        $m = $this->mapOr404($id);
+        Repo::saveLabels($m['id'], Labels::resetPositions($m['labels']), 'pole');
+        return $this->to(Gebietskarten::ADMIN . '/' . $m['id'] . '#gk-beschriftung', 'success', __('Beschriftungen automatisch neu gesetzt.'));
     }
 
     /** Datentabellen für die Bindung (ohne Eingangs-Tabellen) */
@@ -91,6 +158,8 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         foreach (array_keys(Repo::OPTIONS) as $k) {
             if (is_bool(Repo::OPTIONS[$k])) $in['options'][$k] = !empty($in['options'][$k]);
         }
+        // Lage der Beschriftung (bisherige oder neue) ändert nur „Automatisch neu setzen“
+        $in['options']['label_mode'] = $m['options']['label_mode'];
         $in['scope'] = (array) ($in['scope'] ?? []);
         $in['binding'] = (array) ($in['binding'] ?? []) + $m['binding'];
         Repo::saveMap($m['id'], $in);

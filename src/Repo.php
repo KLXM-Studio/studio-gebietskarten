@@ -27,7 +27,18 @@ final class Repo
         'lines' => true,       // Grenzen der Einheiten innerhalb der Gebiete
         'labels' => false,     // Namen der Gebiete in der Karte
         'list' => true,        // Liste der Gebiete unter der Karte sichtbar (sonst nur für Screenreader)
+        // seit 0.3.0 – Beschriftungen (Labels), je Gebiet abweichend in der Spalte labels
+        'label_mode' => 'pole',   // Lage automatisch: pole (Pol der Unzugänglichkeit) | legacy (bisherige Lage, Bestandskarten)
+        'label_size' => 'auto',   // auto (nach Fläche) | s | m | l
+        'label_style' => 'auto',  // auto (hell/dunkel nach Gebietsfarbe) | kit | dark | light | tag
+        'label_caps' => false,    // Großbuchstaben
     ];
+
+    /** Bestandskarten (vor 0.3.0, ohne label_mode): Beschriftung wie bisher – gleiche Lage, Größe M, Schrift des Kits */
+    public const LEGACY = ['label_mode' => 'legacy', 'label_size' => 'm', 'label_style' => 'kit', 'label_caps' => false];
+
+    /** Erlaubte Werte der Auswahl-Optionen */
+    public const ENUMS = ['fit' => ['scope', 'regions'], 'label_mode' => ['pole', 'legacy'], 'label_size' => Labels::SIZE_KEYS, 'label_style' => Labels::STYLES];
 
     /** @return array<string, callable(Table): mixed> */
     public static function tables(): array
@@ -41,6 +52,7 @@ final class Repo
                 ->column('source', 'string', ['length' => 12, 'default' => 'own'])
                 ->column('binding', 'json')
                 ->column('options', 'json')
+                ->column('labels', 'json')       // 0.3.0: Beschriftung je Gebiet (Labels::clean), Schlüssel r{id} / e{eintrag}
                 ->column('created_at', 'datetime')->column('updated_at', 'datetime'),
             self::REGIONS => fn(Table $t) => $t->id()
                 ->column('map_id', 'int', ['null' => false])
@@ -74,8 +86,14 @@ final class Repo
     {
         $m['id'] = (int) $m['id'];
         $m['scope'] = Bases::cleanScope((string) $m['base'], (string) $m['scope']);
-        $m['options'] = array_replace(self::OPTIONS, array_intersect_key((array) (json_decode((string) ($m['options'] ?? ''), true) ?: []), self::OPTIONS));
+        $stored = (array) (json_decode((string) ($m['options'] ?? ''), true) ?: []);
+        // Bestandskarten ohne Angaben zur Beschriftung behalten Lage und Aussehen (Pixelvergleich) – bis „Automatisch neu setzen“
+        $opt = array_replace(self::OPTIONS, array_key_exists('label_mode', $stored) ? [] : self::LEGACY, array_intersect_key($stored, self::OPTIONS));
+        foreach (self::ENUMS as $k => $allowed) if (!in_array($opt[$k], $allowed, true)) $opt[$k] = self::OPTIONS[$k];
+        foreach (self::OPTIONS as $k => $def) if (is_bool($def)) $opt[$k] = (bool) $opt[$k];
+        $m['options'] = $opt;
         $m['binding'] = (array) (json_decode((string) ($m['binding'] ?? ''), true) ?: []);
+        $m['labels'] = Labels::cleanAll(json_decode((string) ($m['labels'] ?? ''), true));
         return $m;
     }
 
@@ -87,7 +105,7 @@ final class Repo
         $opt = [];
         foreach (self::OPTIONS as $k => $def) {
             $v = $in['options'][$k] ?? $def;
-            $opt[$k] = is_bool($def) ? filter_var($v, FILTER_VALIDATE_BOOL) : (in_array($v, ['scope', 'regions'], true) ? $v : $def);
+            $opt[$k] = is_bool($def) ? filter_var($v, FILTER_VALIDATE_BOOL) : (in_array($v, self::ENUMS[$k] ?? [], true) ? $v : $def);
         }
         $row = [
             'title' => mb_substr(trim((string) ($in['title'] ?? '')), 0, 160) ?: __('Gebietskarte'),
@@ -135,7 +153,7 @@ final class Repo
         return ['id' => (int) $r['id'], 'key' => 'r' . (int) $r['id'], 'map_id' => (int) $r['map_id'], 'name' => (string) $r['name'],
             'color' => Colors::clean((string) $r['color']), 'color_dark' => Colors::hex((string) ($r['color_dark'] ?? '')), 'link' => (string) $r['link'], 'text' => (string) ($r['text'] ?? ''),
             'media_id' => $r['media_id'] !== null ? (int) $r['media_id'] : null, 'contact' => (string) ($r['contact'] ?? ''),
-            'units' => self::unitList((string) ($r['units'] ?? '')), 'sort' => (int) $r['sort'], 'entry' => null];
+            'units' => self::unitList((string) ($r['units'] ?? '')), 'sort' => (int) $r['sort'], 'entry' => null, 'label_field' => ''];
     }
 
     /** „05170, 05154“ bzw. Liste → saubere Liste von Schlüsseln (Ziffern, eindeutig, Reihenfolge bleibt). @return list<string> */
@@ -213,6 +231,29 @@ final class Repo
     public static function deleteRegion(int $mapId, int $id): void
     {
         app()->db->query('DELETE FROM ' . self::REGIONS . ' WHERE id = ? AND map_id = ?', [$id, $mapId]);
+        $m = self::map($mapId);
+        if ($m && isset($m['labels']['r' . $id])) {
+            unset($m['labels']['r' . $id]);
+            app()->db->update(self::MAPS, ['labels' => json_encode($m['labels'], JSON_UNESCAPED_UNICODE)], 'id = ?', [$mapId]);
+        }
+        self::touch($mapId);
+    }
+
+    /**
+     * Beschriftungen einer Karte speichern (bereinigt, nur Gebiete der Karte). $mode: label_mode umstellen (z. B. „Automatisch
+     * neu setzen“ einer Bestandskarte → pole).
+     * @param array<string, array> $labels
+     */
+    public static function saveLabels(int $mapId, array $labels, ?string $mode = null): void
+    {
+        $m = self::map($mapId);
+        if (!$m) return;
+        $keys = array_column(Bound::regionsOf($m), 'key');
+        $row = ['labels' => json_encode(Labels::cleanAll($labels, $keys), JSON_UNESCAPED_UNICODE) ?: '{}'];
+        if ($mode !== null && in_array($mode, self::ENUMS['label_mode'], true)) {
+            $row['options'] = json_encode(['label_mode' => $mode] + $m['options']);
+        }
+        app()->db->update(self::MAPS, $row, 'id = ?', [$mapId]);
         self::touch($mapId);
     }
 

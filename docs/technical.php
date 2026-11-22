@@ -8,7 +8,7 @@
     <li><b>Dateien:</b> <code>extension.php</code> (Manifest), <code>src/</code> – <code>Topo</code> (TopoJSON lesen, verschmelzen, projizieren,
       vereinfachen, SVG-Pfade), <code>Bases</code> (Grundlagen, Ebenen, Quellenvermerk), <code>DataPacks</code> (Nachladen), <code>Repo</code>
       (Tabellen), <code>Bound</code> (Datentabellen), <code>EntryAssign</code> (Zuordnung per Klick in Einträge), <code>Render</code> (Ausgabe),
-      <code>Colors</code> (Farben, Dunkel-Werte), <code>Preview</code> (Kit-Farben wie auf der Website), <code>AdminController</code>,
+      <code>Colors</code> (Farben, Dunkel-Werte), <code>Labels</code> (Beschriftungen), <code>Preview</code> (Kit-Farben wie auf der Website), <code>AdminController</code>,
       <code>SelfTest</code>; <code>blocks/gebietskarte.php</code>, <code>views/admin/</code>, <code>data/de/</code> (Länder, Kreise),
       <code>assets/</code> (Quellen) und <code>public/</code> (gebaut, <code>extensions:publish</code>).</li>
     <li><b>Integrationspunkte:</b> <code>feature()</code> + <code>permissions()</code> (<code>gebietskarten.edit</code>), <code>table()</code>
@@ -53,6 +53,42 @@ $svg = Render::svg(Repo::map(3));                                               
       Position des Fensters per CSSOM.</li>
   </ul>
 
+  <h3 id="gebietskarten-labels">Beschriftungen (<code>Labels</code>, seit 0.3.0)</h3>
+  <ul>
+    <li><b>Daten:</b> Spalte <code>gebietskarten_maps.labels</code> (JSON) je Gebiet (<code>r{id}</code> bzw. <code>e{eintrag}</code>, auch bei Datentabellen –
+      „Kartenmetadaten“): <code>show</code> (<code>on|off</code>, sonst Karte), <code>text</code> (bis 3 Zeilen, 120 Zeichen), <code>pos</code>/<code>anchor</code>
+      (<code>[Länge, Breite]</code> – unabhängig vom Ausschnitt), <code>leader</code>, <code>size</code> (<code>auto|s|m|l</code>), <code>style</code>
+      (<code>auto|kit|dark|light|tag</code>), <code>caps</code>. <code>Labels::clean()</code>/<code>cleanAll()</code> behalten nur gültige, abweichende Werte.
+      Karte (<code>options</code>): <code>labels</code>, <code>label_size</code>, <code>label_style</code>, <code>label_caps</code>, <code>label_mode</code>.
+      Text aus der Datentabelle: Bindung <code>label</code> (Feld Text/Textfeld) → <code>$region['label_field']</code>; Schreiben über
+      <code>Labels::saveEntryTexts()</code> mit <code>Entries::save()</code> und <code>EntryEdit::reason()</code> wie die Zuordnung per Klick.</li>
+    <li><b>Lage:</b> <code>Labels::pole()</code> – Pol der Unzugänglichkeit (polylabel: Raster mit Prioritätswarteschlange, gerade/ungerade über alle Ringe,
+      Genauigkeit 1/80 der kleineren Seite) auf den projizierten, vereinfachten Ringen; zwischengespeichert in <code>Render::geometry()['poles']</code>
+      (<code>[x, y, Abstand]</code>), dazu <code>['proj']</code> = <code>[minLon, maxLat, kx, s, ox, pad]</code> für <code>Labels::toSvg()/toGeo()</code>.
+      <b>Bestandskarten</b>: <code>Repo::decodeMap()</code> setzt bei Optionen ohne <code>label_mode</code> <code>Repo::LEGACY</code> (bisheriger Punkt
+      <code>geometry()['labels']</code>, Größe M, Stil <code>kit</code>) – die Ausgabe ist dann Zeichen für Zeichen wie vor 0.3.0. <code>POST …/beschriftung/automatisch</code>
+      setzt <code>label_mode = pole</code> und entfernt <code>pos</code>/<code>anchor</code> (<code>Labels::resetPositions()</code>).</li>
+    <li><b>Größe und Platz:</b> Textmaße geschätzt (<code>Labels::box()</code>: Zeichen × Schriftgröße × 0,54, Großbuchstaben 0,66; Zeilenhöhe 1,15) –
+      die Website misst nichts im Browser. <code>Labels::boxInside()</code> prüft das Rechteck gegen den Pfad des Gebiets (Mitte innen, keine Kante
+      schneidet, Liang-Barsky). <code>auto</code> = größte von L/M/S (23/18/14 Einheiten bei 1000 Breite), die passt.</li>
+    <li><b>Stil und Kontrast:</b> <code>Labels::tone()</code> vergleicht <code>Labels::DARK</code> (#16191d) und <code>LIGHT</code> (#fff) mit der Gebietsfarbe
+      (<code>Colors::approx()</code> hell, <code>approxDark()</code> dunkel; Hinweislinie: Hintergrund des Kits) und nimmt den besseren Kontrast. Klassen
+      <code>gk-tone-d|l</code> (hell), <code>gk-tdk-d|l</code> (dunkel: Regel in der erzeugten Datei <code>farben-….css</code> unter der Dunkel-Regel des Kits,
+      <code>Colors::sheet(…, $labelTones)</code>), <code>gk-tag</code> (Etikett: SVG-Filter mit <code>feFlood class="gk-tagbg"</code>, Farbe per CSS),
+      <code>gk-ls-s|l</code>, <code>gk-lc</code>. Variablen <code>--gk-lab-dark</code>, <code>--gk-lab-light</code>. Mehrzeilig: <code>&lt;tspan x dy="…em"&gt;</code>.</li>
+    <li><b>Telefon-Regel</b> (nur <code>label_mode = pole</code>, Klasse <code>gk--lab2</code>): <code>.gk-map</code> ist Container (<code>gk-map</code>); unter
+      36rem Schrift 22/29/37 Einheiten (×1,6). <code>layout()</code> prüft die Telefon-Größe und nimmt sonst die nächstkleinere (<code>gk-lp-m|s</code>);
+      passt keine bzw. bei Hinweislinien: <code>gk-lh</code> (<code>display: none</code>).</li>
+    <li><b>Ausgabe:</b> <code>Labels::layout($map, $regions, $geo, $effs, $all, $contrast)</code> → <code>Labels::svg()</code> (Website:
+      <code>&lt;g class="gk-labels" aria-hidden="true"&gt;</code>, die Namen tragen die Links bzw. <code>&lt;title&gt;</code> der Gebiete) bzw.
+      <code>Labels::export()</code> (SVG-Export, feste Farben, Etikett als Rechteck). Keine <code>style</code>-Attribute, keine Skripte.</li>
+    <li><b>Editor:</b> <code>Render::html($map, ['labelEdit' =&gt; true])</code> – alle Beschriftungen (auch ausgeblendete) als Gruppe
+      <code>[data-gk-lab]</code> mit fokussierbarem Kasten (<code>role="button"</code>, <code>aria-label</code> mit dem sichtbaren Text), Ankerpunkte als eigene Griffe
+      (<code>[data-gk-anchor]</code>), <code>data-gk-proj</code> am SVG. Das Skript rechnet Zeigerposition → Länge/Breite und schickt Entwürfe an
+      <code>POST /admin/gebietskarten/{id}/beschriftung</code> (JSON <code>{labels, texts, draft}</code>; Antwort <code>box</code>, <code>info</code> je Gebiet mit
+      Größe, Ton, Kontrast <code>cL</code>/<code>cD</code>, <code>fits</code>, <code>fitsPhone</code>; ohne <code>draft</code> gespeichert plus <code>preview</code>).</li>
+  </ul>
+
   <h3 id="gebietskarten-kitfarben">Kit-Farben in der Verwaltung (<code>Preview::kit()</code>)</h3>
   <p>Die Verwaltung lädt das Kit nicht. <code>Preview::kit($dark)</code> löst die Werte deshalb wie der Browser der Website auf: Stylesheet des Kits
     (<code>public/assets/kits/{kit}/css/site.css</code>, Eltern-Kits zuerst) – Variablen an <code>:root</code>, <code>html</code>, <code>body</code>, <code>*</code>,
@@ -76,8 +112,8 @@ $svg = Render::svg(Repo::map(3));                                               
 
   <h3 id="gebietskarten-bindung">Datentabellen und Netzwerk</h3>
   <p>Karten mit Quelle <code>table</code> bilden je veröffentlichtem Eintrag ein Gebiet (<code>Bound::regionsOf()</code>). Bindung
-    (<code>binding</code>, JSON): <code>table</code>, <code>units</code> (Pflicht), <code>name</code>, <code>color</code>, <code>link</code>, <code>text</code>,
-    <code>image</code>, <code>contact</code>, <code>site</code>. <code>Bound::resolve()</code> nimmt Schlüssel (auch ohne führende Null) und Namen
+    (<code>binding</code>, JSON): <code>table</code>, <code>units</code> (Pflicht), <code>name</code>, <code>color</code>, <code>color_dark</code>, <code>link</code>, <code>text</code>,
+    <code>image</code>, <code>contact</code>, <code>site</code>, <code>label</code> (seit 0.3.0, Text der Beschriftung). <code>Bound::resolve()</code> nimmt Schlüssel (auch ohne führende Null) und Namen
     (ohne Groß-/Kleinschreibung, „Kreis …“, Zusätze nach Komma). Geteilte Tabellen (<code>Core\Data\Shared</code>) gehen über <code>Entries</code> wie lokale;
     <code>site</code> vergleicht mit dem Schlüssel und den Hosts der Website.</p>
   <p><b>Zuordnung per Klick</b> (<code>EntryAssign</code>, Route <code>POST /admin/gebietskarten/{id}/zuordnung</code> wie bei eigenen Karten, JSON
@@ -97,4 +133,6 @@ $svg = Render::svg(Repo::map(3));                                               
   <p>Selbsttest: <code>php bin/console gebietskarten:selftest --site=…</code> (Verschmelzen am Beispiel und an echten Kreisen, über die Landesgrenze,
     Zuordnung, Datentabelle, Ausgabe ohne <code>style</code> und Inline-Skript, Namen und Liste, Quellenvermerk überall gleich, Nachladen mit Prüfsumme;
     seit 0.2.0 Dunkel-Werte und Kontrast, Dunkel-Regel als Datei, Auflösen der Kit-Farben, Reihenfolge und die Zuordnung in Einträge mit Rollen „Autorin“ und
-    „Redaktion“ – Version, Protokoll, Status).</p>
+    „Redaktion“ – Version, Protokoll, Status; seit 0.3.0 Beschriftungen: Pol der Unzugänglichkeit, Platzprüfung, Bereinigen, Bestandskarten unverändert,
+    „Automatisch neu setzen“, Größe nach Fläche, Ton und Kontrast, Hinweislinie, Etikett, Zeilenumbruch, Telefon-Regel, Editor-Auszeichnung, Export,
+    Text aus Datentabellen).</p>

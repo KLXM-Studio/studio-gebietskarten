@@ -19,7 +19,8 @@ use Core\Data\Tables;
  */
 final class Bound
 {
-    public const KEYS = ['table', 'units', 'name', 'color', 'color_dark', 'link', 'text', 'image', 'contact', 'site'];
+    /** label (seit 0.3.0): Text der Beschriftung (Kurzname, Text oder Textfeld) – leer = Name */
+    public const KEYS = ['table', 'units', 'name', 'color', 'color_dark', 'link', 'text', 'image', 'contact', 'site', 'label'];
 
     public static function cleanBinding(array $in): array
     {
@@ -84,6 +85,7 @@ final class Bound
                 'contact' => $b['contact'] !== '' ? Entries::text($t, $e, $b['contact']) : '',
                 'units' => [], 'raw' => array_values(array_filter(array_map('trim', (array) $list), fn($v) => $v !== '')),
                 'site' => $b['site'] !== '' ? strtolower(trim((string) ($e[$b['site']] ?? ''))) : '',
+                'label_field' => ($b['label'] ?? '') !== '' && is_scalar($e[$b['label']] ?? null) ? Labels::cleanText((string) $e[$b['label']]) : '',
                 'sort' => $i, 'entry' => ['table' => $t['handle'], 'id' => (int) $e['id']],
             ];
         }

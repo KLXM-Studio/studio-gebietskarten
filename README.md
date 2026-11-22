@@ -43,9 +43,16 @@ Einschalten je Website unter **Administration → Funktionen & Erweiterungen** o
 | Datentabelle | Gebiete statt hier aus einer Datentabelle: ein Eintrag = ein Gebiet, Flächen als Namen oder amtliche Schlüssel in einem Feld. **Zuordnung per Klick** schreibt das Feld der Einträge – mit den Rechten, Versionen und dem Protokoll des Cores. Auch geteilte Tabellen im Netzwerk – jede Website hebt „ihr“ Gebiet hervor (Feld „Website“). |
 | Farben | Design-Farben des Kits, Palette (Okabe-Ito, erweitert; automatisch ohne Grau, Nachbarn verschieden) oder eigene Farbe – eigene Farben mit Wert **im Dunkeln** (eigenes Feld oder automatisch, Beschriftung ≥ 4,5:1). |
 | Block „Gebietskarte“ | Übersicht, ein Gebiet hervorheben, Gebiet dieser Seite oder Website; Klick öffnet den Link, ein Info-Fenster oder nichts. Liste der Gebiete als Alternative, Quellenvermerk unter jeder Karte. |
-| Barrierefreiheit | Jedes Gebiet ein Link bzw. Sprungziel mit Namen, sichtbarer Fokus, Liste für Screenreader und ohne JavaScript, Namen in der Karte mit Kontrast-Rand. |
+| Beschriftungen | Je Gebiet an/aus, eigener Text (Kurzname, Zeilenumbruch), Lage per Ziehen oder Pfeiltasten (Umschalt = große Schritte), „Lage zurücksetzen“, Hinweislinie mit eigenem Ankerpunkt für kleine Gebiete. Je Karte (und je Gebiet abweichend): Schriftgröße S/M/L oder automatisch nach Fläche, Stil automatisch hell/dunkel nach Gebietsfarbe, Schrift des Kits, dunkel, hell oder Etikett, Großbuchstaben. Kontrast hell/dunkel mit Warnung im Editor. Automatische Lage: Pol der Unzugänglichkeit (Mitte der größten freien Fläche). Bei Datentabellen Lage in der Karte, Text optional in einem Feld der Einträge. |
+| Barrierefreiheit | Jedes Gebiet ein Link bzw. Sprungziel mit Namen, sichtbarer Fokus, Liste für Screenreader und ohne JavaScript, Namen in der Karte als echter SVG-Text mit Kontrast-Rand (die zugänglichen Namen tragen die Gebiete). |
 | CSP | Keine `style`-Attribute, keine Inline-Skripte: Farben als Klassen (Kit-Vertrag `--kit-*`) bzw. SVG-Attribut `fill`, Dunkel-Werte eigener Farben als erzeugte Datei im Medienordner; Skript (unter 2 KB) nur beim Info-Fenster. |
 | Grafik | „Als Grafik weiterbearbeiten“: Karte als SVG in die Mediathek und – wenn das Paket `grafik` aktiv ist – gleich in den Grafik-Editor. |
+
+**Beschriftungen auf dem Telefon:** Ist die Karte schmaler als 36rem (rund 576 px), wird die Schrift im Kartenmaß 1,6-fach (S/M/L 22/29/37 statt
+14/18/23 Einheiten bei 1000 Breite) – sonst wäre sie dort kaum 7 px groß. Passt ein Name dann nicht ganz in sein Gebiet, nimmt er die nächstkleinere
+Größe; passt auch S nicht (und bei Hinweislinien immer), wird er dort ausgeblendet. Die Namen bleiben an den Gebieten (Links, `<title>`) und in der Liste
+zugänglich. **Bestandskarten** (angelegt vor 0.3.0) behalten Lage und Aussehen der Namen unverändert (Pixelvergleich Desktop/Telefon, hell/dunkel) – erst
+„Automatisch neu setzen“ stellt sie auf die neue Lage und die Telefon-Regel um.
 
 Befehle: `gebietskarten:daten` (Kartendaten nachladen, `--land=05,06`, `--from=URL|Ordner`, `--list`, `--remove`) und
 `gebietskarten:selftest`. Doku in der Verwaltung: Handbuch → Gebietskarten, Entwicklerhandbuch → Gebietskarten (Erweiterung).
@@ -86,7 +93,11 @@ dataset) into areas such as regional groups, districts of an association or sale
 and contact per area, and show them with the “Area map” block: a server-rendered, accessible SVG without any map library or third-party
 requests (strict CSP, no style attributes). Areas can also come from a data table, including shared tables across a network – assigning
 shapes by clicking writes the entries' field with the core's permissions, revisions and activity log. Areas can be reordered by drag and drop
-or keyboard; custom colors get a dark-mode value (own or derived with a 4.5:1 label contrast). Map data:
+or keyboard; custom colors get a dark-mode value (own or derived with a 4.5:1 label contrast). Labels (since 0.3.0) can be set per area in the
+map editor: on/off, custom text (short name, line breaks), position by dragging or arrow keys, an optional leader line with its own anchor for small
+areas, font size (S/M/L or automatic by area), style (automatic light/dark by area color with contrast check, kit text, dark, light, tag) and capitals.
+Automatic placement uses the pole of inaccessibility; maps created before 0.3.0 keep their label positions until “Place automatically again”. On narrow
+maps (below 36rem) labels get larger and are hidden where they do not fit; the names stay accessible on the areas and in the list. Map data:
 © BKG (2026) dl-de/by-2-0 (Data licence Germany – attribution – version 2.0), simplified; the attribution is added below every map
 automatically. Municipalities are downloaded per state on demand (`php bin/console gebietskarten:daten`). MIT licensed.
 

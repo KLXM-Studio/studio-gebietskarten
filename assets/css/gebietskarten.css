@@ -11,6 +11,8 @@
   --gk-c: var(--kit-surface, #e6eaee);
   --gk-focus: var(--kit-ink, CanvasText);
   --gk-dim: .42;
+  --gk-lab-dark: #16191d;   /* Beschriftung „dunkel“ (Labels::DARK) */
+  --gk-lab-light: #fff;     /* Beschriftung „hell“ (Labels::LIGHT) */
   margin: 0;
 }
 .gk-map { position: relative; }
@@ -30,6 +32,27 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
   stroke-linejoin: round; paint-order: stroke; text-anchor: middle; dominant-baseline: central; pointer-events: none;
 }
 .gk-labels text.is-active { font-weight: 800; }
+/* Beschriftungen (seit 0.3.0): Größe S/M/L (M = bisher), Ton hell/dunkel, Etikett, Großbuchstaben, Hinweislinie */
+.gk-labels .gk-ls-s { font-size: 14px; }
+.gk-labels .gk-ls-l { font-size: 23px; }
+.gk-labels .gk-tone-d { fill: var(--gk-lab-dark); stroke: var(--gk-lab-light); }
+.gk-labels .gk-tone-l { fill: var(--gk-lab-light); stroke: var(--gk-lab-dark); stroke-width: 3px; }
+.gk-labels .gk-tag { fill: var(--gk-bg); stroke: none; }
+.gk-tagbg { flood-color: var(--gk-ink); }
+.gk-labels .gk-lc { text-transform: uppercase; letter-spacing: .04em; }
+.gk-leader { fill: none; stroke: var(--gk-ink); stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
+.gk-anchor { fill: var(--gk-ink); stroke: var(--gk-bg); stroke-width: 1.5; pointer-events: none; }
+/* Telefon-Regel (Karten mit neuer Beschriftung): schmale Karte → Schrift im Kartenmaß 1,6-fach, Beschriftungen ohne Platz entfallen */
+.gk--lab2 .gk-map { container: gk-map / inline-size; }
+@container gk-map (max-width: 36rem) {
+  .gk--lab2 .gk-labels text { font-size: 29px; stroke-width: 5px; }
+  .gk--lab2 .gk-labels .gk-ls-s { font-size: 22px; }
+  .gk--lab2 .gk-labels .gk-ls-l { font-size: 37px; }
+  .gk--lab2 .gk-labels .gk-lp-s { font-size: 22px; }
+  .gk--lab2 .gk-labels .gk-lp-m { font-size: 29px; }
+  .gk--lab2 .gk-labels .gk-tone-l { stroke-width: 4px; }
+  .gk--lab2 .gk-labels .gk-lh { display: none; }
+}
 
 /* Farben: Design (Kit-Vertrag) und Palette (Okabe-Ito + Indigo, Weinrot, Oliv, Grasgrün; mit dem Hintergrund gemischt –
    hell wie dunkel ruhig). Im Dunkeln setzt die erzeugte Datei farben-….css lesbare Werte (Beschriftung ≥ 4,5:1). */

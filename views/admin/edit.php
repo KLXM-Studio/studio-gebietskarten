@@ -5,12 +5,14 @@
  * @var array $map  @var list<array> $regions  @var array $geo  @var ?array $table  @var int $editRegion  @var array $tables
  * @var string $preview  @var array $kitLight  @var array $kitDark  @var bool $darkOn  @var ?string $assignReason
  * @var array<int, string> $locked  @var array $flash
+ * @var string $labelBox  @var array $labelInfo  @var bool $labelBound  @var array<string, string> $textLock
  */
 use Core\Fields;
 use Klxm\Gebietskarten\Bases;
 use Klxm\Gebietskarten\Bound;
 use Klxm\Gebietskarten\Colors;
 use Klxm\Gebietskarten\Gebietskarten as G;
+use Klxm\Gebietskarten\Labels;
 use Klxm\Gebietskarten\Preview;
 
 $base = Bases::all()[$map['base']] ?? Bases::all()['de'];
@@ -191,6 +193,76 @@ $editorData = [
 </section>
 <?php endif; ?>
 
+<?php
+// Beschriftungen: Text, Lage (Ziehen, Tastatur), Hinweislinie, Größe, Stil, Großbuchstaben je Gebiet – Lage und Gestaltung in der Karte,
+// Text bei Datentabellen mit Feld „label“ in den Einträgen
+$pole = $map['options']['label_mode'] === 'pole';
+$labelData = [
+    'save' => url($adm . '/beschriftung'), 'bound' => (bool) $labelBound, 'pole' => $pole,
+    'labels' => (object) $map['labels'], 'info' => (object) $labelInfo,
+    'regions' => array_values(array_map(fn($r) => ['key' => $r['key'], 'name' => $r['name'],
+        'text' => $labelBound ? (string) ($r['label_field'] ?? '') : (string) ($map['labels'][$r['key']]['text'] ?? ''),
+        'textLock' => $textLock[$r['key']] ?? null, 'has' => isset($geo['unitsOf'][$r['key']]) && $geo['unitsOf'][$r['key']] !== []], $regions)),
+    'defaults' => ['show' => (bool) $map['options']['labels'], 'size' => $map['options']['label_size'], 'style' => $map['options']['label_style'], 'caps' => (bool) $map['options']['label_caps']],
+    't' => ['auto' => __('automatisch'), 'manual' => __('von Hand gesetzt'), 'posAuto' => __('Lage: automatisch'), 'posManual' => __('Lage: von Hand gesetzt'),
+        'contrastL' => __('Kontrast hell: {ratio}'), 'contrastD' => __('im Dunkeln: {ratio}'), 'low' => __('unter 4,5:1'),
+        'tight' => __('Passt nicht ganz in das Gebiet – Kurzname, Zeilenumbruch, kleinere Schrift oder Hinweislinie.'),
+        'phone' => __('Auf schmalen Bildschirmen ausgeblendet (zu wenig Platz).'), 'phoneLeader' => __('Mit Hinweislinie: auf schmalen Bildschirmen ausgeblendet.'),
+        'off' => __('Diese Beschriftung ist ausgeblendet.'), 'size' => __('Größe: {size}'), 'tone' => __('Schrift: {tone}'),
+        'toneD' => __('dunkel'), 'toneL' => __('hell'), 'toneKit' => __('Schrift des Kits'), 'toneTag' => __('Etikett'),
+        'moved' => __('„{name}“ verschoben'), 'saved' => __('Beschriftungen gespeichert.'), 'error' => __('Speichern fehlgeschlagen.'),
+        'unsaved' => __('Nicht gespeicherte Änderungen'), 'saving' => __('Wird gespeichert …'), 'leave' => __('Änderungen verwerfen?'),
+        'textLocked' => __('Text aus dem Eintrag – hier nicht änderbar: {reason}'), 'noArea' => __('Gebiet ohne Flächen – keine Beschriftung.')],
+];
+?>
+<section class="adm-card gk-lab-card" id="gk-beschriftung" aria-labelledby="gk-lab-h">
+  <div class="gk-prev-head">
+    <h2 id="gk-lab-h"><?= e(__('Beschriftungen')) ?></h2>
+    <div class="gk-prev-switch" role="group" aria-label="<?= e(__('Farbschema der Vorschau')) ?>">
+      <button type="button" class="adm-btn adm-btn--small adm-btn--primary" data-gk-scheme="light" aria-pressed="true"><?= e(__('Hell')) ?></button>
+      <button type="button" class="adm-btn adm-btn--small" data-gk-scheme="dark" aria-pressed="false"><?= e(__('Dunkel')) ?></button>
+    </div>
+  </div>
+  <p class="adm-muted"><?= e(__('Ziehen Sie eine Beschriftung an ihren Platz oder wählen Sie sie mit Tab und verschieben Sie sie mit den Pfeiltasten (Umschalt+Pfeil: große Schritte). Klick auf ein Gebiet oder eine Beschriftung wählt es rechts aus – dort Text, Größe, Stil und Hinweislinie.')) ?></p>
+  <?php if (!$pole): ?>
+  <div class="adm-flash adm-flash--info gk-lab-legacy" role="note"><p><?= e(__('Diese Karte nutzt die bisherige Lage der Namen (vor Version 0.3.0), damit sie auf der Website unverändert bleibt. „Automatisch neu setzen“ verwendet die neue Berechnung (Mitte der größten freien Fläche des Gebiets), passt die Schriftgröße auf dem Telefon an und blendet dort Namen ohne Platz aus.')) ?></p></div>
+  <?php endif; ?>
+  <div class="gk-lab-ed">
+    <div class="gk-prevbox gk-labbox" data-gk-preview data-gk-labbox data-light="<?= e(Preview::vars($kitLight)) ?>" data-dark="<?= e(Preview::vars($kitDark)) ?>" style="<?= e(Preview::vars($kitLight)) ?>"><?= $labelBox ?></div>
+    <div class="gk-lab-panel" data-gk-labpanel>
+      <div class="f"><label for="gk-lab-sel"><?= e(__('Gebiet')) ?></label>
+        <select id="gk-lab-sel" data-gk-lab-sel><?php foreach ($regions as $r): ?><option value="<?= e($r['key']) ?>"><?= e($r['name']) ?></option><?php endforeach; ?></select></div>
+      <div class="f"><label for="gk-lab-show"><?= e(__('Beschriftung')) ?></label>
+        <select id="gk-lab-show" data-gk-lab-f="show"><option value="" data-gk-inherit><?= e(__('wie Karte')) ?></option><option value="on"><?= e(__('zeigen')) ?></option><option value="off"><?= e(__('ausblenden')) ?></option></select></div>
+      <div class="f"><label for="gk-lab-text"><?= e(__('Text')) ?></label>
+        <textarea id="gk-lab-text" rows="2" maxlength="<?= Labels::MAX_TEXT ?>" data-gk-lab-f="text" aria-describedby="gk-lab-text-h"></textarea>
+        <p class="f-help" id="gk-lab-text-h"><?= e($labelBound ? __('Steht im Feld „{field}“ des Eintrags. Leer = Name. Neue Zeile mit Enter (höchstens 3).', ['field' => (string) $map['binding']['label']])
+            : __('Leer = Name des Gebiets. Für lange Namen einen Kurznamen oder einen Zeilenumbruch (Enter, höchstens 3 Zeilen).')) ?></p></div>
+      <div class="gk-lab-row">
+        <div class="f"><label for="gk-lab-size"><?= e(__('Schriftgröße')) ?></label>
+          <select id="gk-lab-size" data-gk-lab-f="size"><?php foreach (Labels::sizeOptions(true) as $k => $l): ?><option value="<?= e($k) ?>"><?= e($l) ?></option><?php endforeach; ?></select></div>
+        <div class="f"><label for="gk-lab-caps"><?= e(__('Großbuchstaben')) ?></label>
+          <select id="gk-lab-caps" data-gk-lab-f="caps"><option value=""><?= e(__('wie Karte')) ?></option><option value="on"><?= e(__('ja')) ?></option><option value="off"><?= e(__('nein')) ?></option></select></div>
+      </div>
+      <div class="f"><label for="gk-lab-style"><?= e(__('Stil')) ?></label>
+        <select id="gk-lab-style" data-gk-lab-f="style"><?php foreach (Labels::styleOptions(true) as $k => $l): ?><option value="<?= e($k) ?>"><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <div class="f"><label class="gk-lab-check"><input type="checkbox" data-gk-lab-f="leader"> <?= e(__('Hinweislinie (Text außerhalb, Linie zum Ankerpunkt im Gebiet)')) ?></label>
+        <p class="f-help"><?= e(__('Für kleine Gebiete: Text und Ankerpunkt lassen sich getrennt verschieben.')) ?></p></div>
+      <div class="gk-lab-pos"><span data-gk-lab-pos></span>
+        <button type="button" class="adm-btn adm-btn--small adm-btn--ghost" data-gk-lab-reset><?= icon('arrow-counter-clockwise') ?> <?= e(__('Lage zurücksetzen')) ?></button></div>
+      <div class="gk-lab-info" data-gk-lab-info role="status" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="gk-lab-save">
+    <button type="button" class="adm-btn adm-btn--primary" data-gk-lab-save disabled><?= e(__('Beschriftungen speichern')) ?></button>
+    <span class="gk-ed__status" data-gk-lab-status role="status" aria-live="polite"></span>
+  </div>
+  <form method="post" action="<?= e(url($adm . '/beschriftung/automatisch')) ?>" class="gk-lab-autoform" data-confirm="<?= e(__('Alle Beschriftungen automatisch neu setzen? Von Hand gesetzte Lagen und Ankerpunkte gehen verloren, eigene Texte und Stile bleiben.')) ?>">
+    <?= csrf_field() ?><button class="adm-btn adm-btn--small adm-btn--ghost"><?= icon('crosshair') ?> <?= e(__('Automatisch neu setzen')) ?></button>
+  </form>
+</section>
+<script type="application/json" id="gk-lab-data"><?= json_encode($labelData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+
 <section class="adm-card gk-prev-card">
   <div class="gk-prev-head">
     <h2><?= e(__('Vorschau')) ?></h2>
@@ -222,8 +294,15 @@ $editorData = [
     <fieldset class="f"><legend><?= e(__('Darstellung')) ?></legend>
       <label><input type="checkbox" name="m[options][rest]" value="1"<?= $map['options']['rest'] ? ' checked' : '' ?>> <?= e(__('Flächen ohne Gebiet zeigen (grau)')) ?></label><br>
       <label><input type="checkbox" name="m[options][lines]" value="1"<?= $map['options']['lines'] ? ' checked' : '' ?>> <?= e(__('Grenzen der {nouns} innerhalb der Gebiete zeigen', ['nouns' => $nouns])) ?></label><br>
-      <label><input type="checkbox" name="m[options][labels]" value="1"<?= $map['options']['labels'] ? ' checked' : '' ?>> <?= e(__('Namen der Gebiete in der Karte')) ?></label><br>
+      <label><input type="checkbox" name="m[options][labels]" value="1"<?= $map['options']['labels'] ? ' checked' : '' ?>> <?= e(__('Namen der Gebiete in der Karte (je Gebiet abweichend unter „Beschriftungen“)')) ?></label><br>
       <label><input type="checkbox" name="m[options][list]" value="1"<?= $map['options']['list'] ? ' checked' : '' ?>> <?= e(__('Liste der Gebiete unter der Karte (sonst nur für Screenreader)')) ?></label>
+    </fieldset>
+    <fieldset class="f gk-adm-labels"><legend><?= e(__('Beschriftungen')) ?></legend>
+      <div class="f"><label for="gk-ls"><?= e(__('Schriftgröße')) ?></label>
+        <select id="gk-ls" name="m[options][label_size]"><?php foreach (Labels::sizeOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $map['options']['label_size'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <div class="f"><label for="gk-lst"><?= e(__('Stil')) ?></label>
+        <select id="gk-lst" name="m[options][label_style]"><?php foreach (Labels::styleOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $map['options']['label_style'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+      <label class="gk-lab-check"><input type="checkbox" name="m[options][label_caps]" value="1"<?= $map['options']['label_caps'] ? ' checked' : '' ?>> <?= e(__('Großbuchstaben')) ?></label>
     </fieldset>
     <div class="f"><label for="gk-fit"><?= e(__('Ausschnitt')) ?></label>
       <select id="gk-fit" name="m[options][fit]"><option value="scope"<?= $map['options']['fit'] === 'scope' ? ' selected' : '' ?>><?= e(__('alle Flächen der gewählten Länder')) ?></option><option value="regions"<?= $map['options']['fit'] === 'regions' ? ' selected' : '' ?>><?= e(__('nur bis zum Rand der Gebiete')) ?></option></select></div>
@@ -238,7 +317,8 @@ $editorData = [
       <?php if ($table): foreach (['units' => __('Feld mit den Flächen (Pflicht)'), 'name' => __('Name (leer = Titel des Eintrags)'), 'color' => __('Farbe (Feld vom Typ Farbe)'),
           'color_dark' => __('Farbe im Dunkeln (optional, sonst automatisch)'),
           'link' => __('Link (leer = Detailseite des Eintrags)'), 'text' => __('Infotext'), 'image' => __('Bild'), 'contact' => __('Kontakt'),
-          'site' => __('Website (Schlüssel oder Adresse – für „Gebiet dieser Website“)')] as $k => $label): ?>
+          'site' => __('Website (Schlüssel oder Adresse – für „Gebiet dieser Website“)'),
+          'label' => __('Beschriftung in der Karte (Kurzname, optional – Text oder Textfeld)')] as $k => $label): ?>
       <div class="f"><label for="gk-b<?= e($k) ?>"><?= e($label) ?></label><select id="gk-b<?= e($k) ?>" name="m[binding][<?= e($k) ?>]"><?php foreach ($fo as $fn => $fl): ?><option value="<?= e((string) $fn) ?>"<?= (string) $fn === ($b[$k] ?? '') ? ' selected' : '' ?>><?= e($fl) ?></option><?php endforeach; ?></select></div>
       <?php endforeach; endif; ?>
     </fieldset>

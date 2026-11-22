@@ -159,6 +159,10 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>image</code>, <code>contact</code>, <code>site</code>, <code>label</code> (seit 0.3.0, Text der Beschriftung). <code>Bound::resolve()</code> nimmt Schlüssel (auch ohne führende Null) und Namen
     (ohne Groß-/Kleinschreibung, „Kreis …“, Zusätze nach Komma). Geteilte Tabellen (<code>Core\Data\Shared</code>) gehen über <code>Entries</code> wie lokale;
     <code>site</code> vergleicht mit dem Schlüssel und den Hosts der Website.</p>
+  <p><b>Postleitzahlen</b> (seit 0.8.0): <code>Nearby::byPlz($plz)</code> liest <code>data/de/plz.json</code> – je PLZ die Kreise (AGS, 5 Stellen) mit Orten
+    und Punkt (Mittel der Orte im Kreis), meiste Orte zuerst. Quelle GeoNames Postal Codes DE (CC BY 4.0), erzeugt mit
+    <code>node tools/kartendaten/plz.mjs DE.txt</code> (nicht im Paket). Eine Eingabe, die mit fünf Ziffern beginnt, löst <code>Nearby::resolve()</code>
+    vor allen anderen Wegen darüber auf: <code>regions</code>/<code>sites</code> aus <code>regionsFor()</code> aller Kreise der PLZ, Punkt und Beschriftung „PLZ Ort“.</p>
   <p><b>„In deiner Nähe“</b> (seit 0.5.0, <code>Nearby</code>): Filter <code>data.nearby</code> des Cores (<code>Core\Data\Nearby::locate()</code>). Fläche über
     <code>Nearby::byName()</code> (Gemeinden, falls nachgeladen, dann Kreise, Länder; Namen wie bei <code>Bound::resolve()</code>, auch AGS) bzw.
     <code>Nearby::byPoint()</code> (Punkt-in-Fläche über die Bögen, gerade/ungerade); Kartenpunkt = Beschriftungspunkt (<code>x</code>/<code>y</code>) der Fläche.

@@ -1,5 +1,13 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.8.0 (2026-11-22)
+
+- **Postleitzahlen offline für „In deiner Nähe“:** Eine fünfstellige Eingabe (auch „47495 Rheinberg“) findet über die mitgelieferte Tabelle
+  `data/de/plz.json` (GeoNames, CC BY 4.0, rund 10.800 PLZ) den Kreis und einen Kartenpunkt – ohne Online-Geokodierung und ohne
+  Gemeindedaten. PLZ über Kreisgrenzen: alle betroffenen Kreise zählen. Werkzeug `tools/kartendaten/plz.mjs` zum Aktualisieren.
+- „Kreis Wesel“ bzw. „Landkreis …“ findet den Kreis auch dann, wenn die Gemeindedaten geladen sind (vorher die gleichnamige Stadt).
+- Selbsttest: PLZ-Zuordnung; Tests zu Namen und Punkten gelten mit und ohne geladene Gemeindedaten.
+
 ## 0.7.3 (2026-11-22)
 
 - **Eindeutige Flächen im Text-Feld:** Nach dem Regionswechsel schreibt die Erweiterung jede Beispiel-Fläche so, dass genau sie gemeint ist –

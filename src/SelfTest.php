@@ -229,16 +229,23 @@ final class SelfTest
     private static function nearby(): void
     {
         $w = Nearby::byName('Wesel');
-        self::t(($w['id'] ?? '') === '05170', 'Name → Kreis (Wesel = 05170)', (string) json_encode($w));
+        self::t(str_starts_with((string) ($w['id'] ?? ''), '05170'), 'Name → Kreis bzw. Gemeinde im Kreis (Wesel, 05170…)', (string) json_encode($w));
         self::t((Nearby::byName('Kreis Wesel')['id'] ?? '') === '05170', 'Zusatz „Kreis“ wird erkannt');
         self::t((Nearby::byName('Nordrhein-Westfalen')['id'] ?? '') === '05', 'Name → Land');
         self::t((Nearby::byName('05170')['id'] ?? '') === '05170', 'Amtlicher Schlüssel');
         self::t(Nearby::byName('Quatschhausen') === null, 'Unbekannter Ort → nichts');
+        // Postleitzahlen offline (data/de/plz.json)
+        self::t((Nearby::byPlz('47495')[0]['ags'] ?? '') === '05170', 'PLZ 47495 → Kreis Wesel');
+        self::t((Nearby::byPlz('50667')[0]['ags'] ?? '') === '05315', 'PLZ 50667 → Köln');
+        self::t((Nearby::byPlz('57074')[0]['ags'] ?? '') === '05970', 'PLZ 57074 → Kreis Siegen-Wittgenstein');
+        self::t(Nearby::byPlz('00000') === [] && Nearby::byPlz('abc') === [], 'Unbekannte PLZ → nichts');
+        $p = Nearby::byPlz('47495')[0] ?? null;
+        self::t($p !== null && $p['lat'] > 51 && $p['lat'] < 52 && $p['lng'] > 6 && $p['lng'] < 7, 'PLZ mit Kartenpunkt');
         $p = Nearby::byPoint(51.643, 6.6034);
-        self::t(($p['id'] ?? '') === '05170', 'Punkt → Kreis, in dem er liegt', (string) json_encode($p));
+        self::t(str_starts_with((string) ($p['id'] ?? ''), '05170'), 'Punkt → Fläche, in der er liegt (Kreis bzw. Gemeinde)', (string) json_encode($p));
         self::t(Nearby::byPoint(40.0, 2.0) === null, 'Punkt außerhalb → nichts');
         $v = Nearby::resolve(['point' => null, 'label' => '', 'regions' => [], 'sites' => []], ['q' => 'Wesel', 'point' => null]);
-        self::t(!Gebietskarten::on() || (abs((float) ($v['point']['lat'] ?? 0) - 51.643) < 0.01 && ($v['label'] ?? '') === 'Wesel'), 'Filter: Kartenpunkt und Name aus der Fläche');
+        self::t(!Gebietskarten::on() || (abs((float) ($v['point']['lat'] ?? 0) - 51.65) < 0.05 && ($v['label'] ?? '') === 'Wesel'), 'Filter: Kartenpunkt und Name aus der Fläche');
     }
 
     private static function realData(): void

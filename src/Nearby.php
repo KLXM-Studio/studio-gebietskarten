@@ -9,6 +9,8 @@ namespace Klxm\Gebietskarten;
  * „In deiner Nähe“ des Cores (Filter data.nearby, Core\Data\Nearby): Ort der Besucher-Eingabe über die Kartengrundlage auflösen –
  * ohne Anfragen an Dritte.
  *
+ *  0. Postleitzahl (5 Stellen, auch mit Ort dahinter): Tabelle data/de/plz.json (GeoNames, CC BY 4.0) → Kreis(e) und Punkt – ohne
+ *     Gemeindedaten und ohne Geokodierung; reicht eine PLZ über Kreisgrenzen, zählen alle Kreise.
  *  1. Fläche finden: Name einer Gemeinde (wenn deren Kartendaten nachgeladen sind), eines Kreises oder Landes („Wesel“, „Kreis
  *     Wesel“), amtlicher Schlüssel (AGS) – oder, wenn der Core schon einen Kartenpunkt hat (PLZ über die Geokodierung), die
  *     Fläche, in der der Punkt liegt (Kreise, sonst Länder).
@@ -24,6 +26,20 @@ final class Nearby
     {
         if (!Gebietskarten::on()) return null;
         $q = trim((string) ($ctx['q'] ?? ''));
+        // Postleitzahl (auch „47495 Rheinberg“): offline über die PLZ-Tabelle – alle Kreise der PLZ, Punkt der Orte
+        if (preg_match('~^(\d{5})\b~', $q, $m) && ($hits = self::byPlz($m[1]))) {
+            $regions = $sites = [];
+            foreach ($hits as $h) {
+                [$r, $s] = self::regionsFor($h['ags']);
+                array_push($regions, ...$r);
+                array_push($sites, ...$s);
+            }
+            if (($v['label'] ?? '') === '') $v['label'] = $m[1] . ' ' . $hits[0]['place'];
+            if (empty($v['point'])) $v['point'] = ['lat' => $hits[0]['lat'], 'lng' => $hits[0]['lng']];
+            $v['regions'] = array_values(array_unique([...(array) ($v['regions'] ?? []), ...$regions]));
+            $v['sites'] = array_values(array_unique([...(array) ($v['sites'] ?? []), ...$sites]));
+            return $v;
+        }
         $unit = $q !== '' ? self::byName($q) : null;
         if (!$unit && is_array($ctx['point'] ?? null)) $unit = self::byPoint((float) $ctx['point']['lat'], (float) $ctx['point']['lng']);
         if (!$unit) return null;
@@ -34,6 +50,25 @@ final class Nearby
         $v['regions'] = array_values(array_unique([...(array) ($v['regions'] ?? []), ...$regions]));
         $v['sites'] = array_values(array_unique([...(array) ($v['sites'] ?? []), ...$sites]));
         return $v;
+    }
+
+    /**
+     * Postleitzahl → Kreise (AGS 5 Stellen) mit Orten und Punkt aus data/de/plz.json (GeoNames, CC BY 4.0; tools/kartendaten/plz.mjs).
+     * Mehrere Einträge, wenn die PLZ über Kreisgrenzen reicht (meiste Orte zuerst). @return list<array{ags: string, place: string, lat: float, lng: float}>
+     */
+    public static function byPlz(string $plz): array
+    {
+        static $table = null;
+        if (!preg_match('~^\d{5}$~', $plz)) return [];
+        if ($table === null) {
+            $f = dirname(__DIR__) . '/data/de/plz.json';
+            $table = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+        }
+        $out = [];
+        foreach ((array) ($table[$plz] ?? []) as $e) {
+            if (is_array($e) && count($e) >= 4) $out[] = ['ags' => (string) $e[0], 'place' => (string) $e[1], 'lat' => (float) $e[2], 'lng' => (float) $e[3]];
+        }
+        return $out;
     }
 
     /** Ebenen mit Daten: Gemeinden (nachgeladene Länder), Kreise, Länder. @return list<array{0: string, 1: array}> */
@@ -55,7 +90,10 @@ final class Nearby
     public static function byName(string $q): ?array
     {
         $n = Bound::norm($q);
-        foreach (self::levels() as [, $d]) {
+        // „Kreis Wesel“, „Landkreis Fulda“: nicht die gleichnamige Gemeinde
+        $kreis = preg_match('~^(land)?kreis\b|^kreisfreie\b~iu', trim($q)) === 1;
+        foreach (self::levels() as [$level, $d]) {
+            if ($kreis && $level === 'gemeinden') continue;
             if (preg_match('~^\d{2,8}$~', $q) && isset($d['units'][$q])) return self::unit($d['units'][$q]);
             [$ids] = Bound::resolve([$q], $d['units']);
             if ($ids) return self::unit($d['units'][$ids[0]]);

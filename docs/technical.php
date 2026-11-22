@@ -164,7 +164,10 @@ $svg = Render::svg(Repo::map(3));                                               
     <code>Nearby::byPoint()</code> (Punkt-in-Fläche über die Bögen, gerade/ungerade); Kartenpunkt = Beschriftungspunkt (<code>x</code>/<code>y</code>) der Fläche.
     <code>Nearby::regionsFor($ags)</code>: alle Gebiete von Karten mit Quelle <code>table</code>, deren aufgelöste Flächen die gefundene enthalten oder in ihr liegen
     (Präfix des AGS: Gemeinde 05170048 → Kreis 05170 → Land 05) – Rückgabe <code>regions</code> „{tabelle}:{id}“ und <code>sites</code> (Feld „Website“ als Schlüssel
-    oder Host, <code>Nearby::siteKey()</code>). Der Core ordnet damit zuständige Einträge vor die im Umkreis (Verknüpfung oder Funktion mit Verknüpfung auf das Gebiet).</p>
+    oder Host, <code>Nearby::siteKey()</code>). Der Core ordnet damit zuständige Einträge vor die im Umkreis (Verknüpfung oder Funktion mit Verknüpfung auf das Gebiet).
+    Seit 0.6.0 zusätzlich Filter <code>data.nearby_point</code>: <code>Nearby::pointOf($tabelle, $id)</code> liefert für Gebiete aus Datentabellen die Mitte
+    (Mittel der Beschriftungspunkte ihrer Flächen) – Einträge ohne Kartenfeld kommen so in den Umkreis. Gemeindenamen brauchen die Gemeindedaten der
+    Länder (Hinweis mit Knopf im Editor, <code>gebietskarten:data gemeinden --land=05</code>).</p>
   <p><b>Zuordnung per Klick</b> (<code>EntryAssign</code>, Route <code>POST /admin/gebietskarten/{id}/zuordnung</code> wie bei eigenen Karten, JSON
     <code>{"regions": {"{eintrag}": ["05170", …]}}</code>): nur mit <code>can('data.edit', $tabelle)</code> und einem Feld vom Typ <code>multiselect</code>,
     <code>text</code> oder <code>textarea</code>; je Eintrag <code>Core\Data\EntryEdit::reason()</code> (veröffentlicht nur mit <code>data.publish</code>, fremde

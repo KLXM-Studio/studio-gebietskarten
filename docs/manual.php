@@ -147,4 +147,7 @@
   <p><b>„In deiner Nähe“:</b> Ist eine Karte an eine Datentabelle gebunden (z. B. Regionalgruppen), finden die Blöcke Personen, Nächste Termine und
     Datenliste mit „In deiner Nähe“ über diese Karte die zuständige Gruppe: Besucher geben einen Ort oder Kreis ein, gezeigt werden zuerst die Termine bzw.
     Ansprechpersonen der Gruppe, zu deren Gebiet der Ort gehört, danach Einträge im Umkreis. Mit dem Feld „Website“ (Netzwerk) findet der Verband so den
-    zuständigen Landesverein. Postleitzahlen kennt die Kartengrundlage nicht – dafür gibt es im Core die Einstellung „PLZ und Orte online suchen“.</p>
+    zuständigen Landesverein. Postleitzahlen kennt die Kartengrundlage nicht – dafür gibt es im Core die Einstellung „PLZ und Orte online suchen“.
+    Gemeindenamen (z. B. Gevelsberg) findet die Karte erst mit den Gemeindedaten der Länder – der Editor einer Karte mit Datentabelle bietet dafür
+    „Gemeindedaten laden“ an. Gruppen ohne eigenen Kartenpunkt nehmen für den Umkreis die Mitte ihres Gebiets – so erscheinen nach der zuständigen
+    auch die Nachbargruppen.</p>

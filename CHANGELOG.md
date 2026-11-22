@@ -1,5 +1,15 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.6.0 (2026-11-22)
+
+- **Mitte eines Gebiets als Kartenpunkt** (Filter `data.nearby_point` des Cores): Einträge ohne Kartenfeld, die Gebiet einer Karte mit
+  Datentabelle sind (z. B. Regionalgruppen), bekommen die Mitte ihrer Flächen. „Zuständige zuerst, dann im Umkreis“ zeigt damit nach der
+  zuständigen auch die benachbarten Gruppen; Termine und Kontakte ohne eigenen Ort erben den Punkt über ihre Verknüpfung (Core).
+- **Gemeindedaten für „In deiner Nähe“:** Der Editor einer Karte mit Datentabelle weist darauf hin, wenn für Orte unterhalb der Kreisebene
+  (z. B. Gevelsberg) die Gemeindedaten der Länder im Ausschnitt fehlen – mit Knopf „Gemeindedaten laden“. Kurzform auf der Kommandozeile:
+  `gebietskarten:data gemeinden --land=05` (wie `gebietskarten:daten --land=05`).
+- `Nearby::pointOf()`; Selbsttest für zuständige Gebiete und die Mitte eines Gebiets.
+
 ## 0.5.0 (2026-11-22)
 
 - **„In deiner Nähe“ des Cores** (Filter `data.nearby`, Core-Stufe „Netzwerk“): Besucher geben einen Ort ein, die Erweiterung findet die

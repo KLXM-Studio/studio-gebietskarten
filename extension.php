@@ -28,14 +28,14 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.5.0',
+    'version' => '0.6.0',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
     'license' => 'MIT',
     'provides' => ['Menüpunkt „Gebietskarten“ (Karten, Gebiete, Kartendaten)', 'Block „Gebietskarte“', 'Recht „Gebietskarten bearbeiten“',
         'Befehle gebietskarten:daten und gebietskarten:selftest'],
-    'commands' => ['gebietskarten:daten', 'gebietskarten:selftest'],
+    'commands' => ['gebietskarten:daten', 'gebietskarten:data', 'gebietskarten:selftest'],
     'usage' => function (): ?string {
         try {
             $c = Repo::counts();
@@ -82,6 +82,8 @@ return [
 
         // „In deiner Nähe“ des Cores (Core\Data\Nearby): Ort der Besucher-Eingabe → Fläche, Kartenpunkt, zuständige Gebiete und Websites
         if (\Core\Filters::known('data.nearby')) $x->filter('data.nearby', fn(array $v, array $ctx): ?array => Klxm\Gebietskarten\Nearby::resolve($v, $ctx));
+        // … und Kartenpunkt eines Gebiets ohne Kartenfeld (Mitte der Flächen), damit Nachbargebiete in den Umkreis kommen (Core ab data.nearby_point)
+        if (\Core\Filters::known('data.nearby_point')) $x->filter('data.nearby_point', fn(mixed $v, array $ctx): ?array => $v ?? Klxm\Gebietskarten\Nearby::pointOf((string) ($ctx['table'] ?? ''), (int) ($ctx['id'] ?? 0)));
 
         $x->health(function (): array {
             if (!G::on()) return [];
@@ -118,6 +120,9 @@ return [
 
         $x->command('gebietskarten:daten', 'Gebietskarten: Kartendaten der Gemeinden je Land nachladen (--land=05,06, --from=URL|Ordner, --list, --remove)',
             fn(array $args): int => Klxm\Gebietskarten\DataPacks::console($args));
+        // Kurzform wie in der Doku des Cores: gebietskarten:data gemeinden --land=05
+        $x->command('gebietskarten:data', 'Gebietskarten: Kartendaten nachladen – gebietskarten:data gemeinden --land=05 (wie gebietskarten:daten)',
+            fn(array $args): int => Klxm\Gebietskarten\DataPacks::console(array_values(array_filter($args, fn($a) => $a !== 'gemeinden'))));
         $x->command('gebietskarten:selftest', 'Gebietskarten: Verschmelzen, Zuordnung (auch in Einträge), Reihenfolge, Farben im Dunkeln, Beschriftungen, Darstellung, Ausgabe (CSP, Zugänglichkeit), Quellenvermerk',
             fn(array $args): int => Klxm\Gebietskarten\SelfTest::run());
     },

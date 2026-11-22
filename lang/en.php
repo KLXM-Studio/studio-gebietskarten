@@ -322,4 +322,6 @@ return [
     'animiert – Gebiet hebt sich hervor' => 'animated – area lifts out',
     'dezent – übrige Gebiete abdunkeln' => 'subtle – dim the other areas',
     'keiner' => 'none',
+    'Für Orte unterhalb der Kreisebene (z. B. „In deiner Nähe“ mit einem Gemeindenamen) Gemeindedaten laden: {list}.' => 'For places below district level (e.g. “Near you” with a municipality name) load municipality data: {list}.',
+    'Gemeindedaten laden' => 'Load municipality data',
 ];

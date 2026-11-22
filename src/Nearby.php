@@ -137,6 +137,37 @@ final class Nearby
         return [array_values(array_unique($regions)), array_values(array_unique($sites))];
     }
 
+    /**
+     * Filter data.nearby_point des Cores: Kartenpunkt eines Eintrags ohne Kartenfeld, der als Gebiet einer Karte mit Datentabelle
+     * dient (z. B. Regionalgruppe) – Mitte seiner Flächen (Mittel der Beschriftungspunkte). Damit findet „In deiner Nähe“ nach der
+     * zuständigen auch die benachbarten Gruppen im Umkreis. null = kein Gebiet.
+     * @return array{lat: float, lng: float}|null
+     */
+    public static function pointOf(string $table, int $id): ?array
+    {
+        static $centers = null;
+        if (!Gebietskarten::on() || $id <= 0) return null;
+        if ($centers === null) {
+            $centers = [];
+            foreach (Repo::maps() as $map) {
+                if (($map['source'] ?? 'own') !== 'table' || !($t = Bound::table($map))) continue;
+                try {
+                    $units = Bases::units((string) $map['base'], (string) $map['level'], (array) $map['scope'])['units'];
+                } catch (\Throwable) {
+                    continue;
+                }
+                foreach (Bound::regionsOf($map) as $r) {
+                    [$ids] = Bound::resolve((array) $r['raw'], $units);
+                    $pts = [];
+                    foreach ($ids as $u) if (isset($units[$u]) && (float) $units[$u]['x'] !== 0.0) $pts[] = [(float) $units[$u]['x'], (float) $units[$u]['y']];
+                    if (!$pts) continue;
+                    $centers[$t['handle'] . ':' . (int) $r['id']] ??= ['lat' => round(array_sum(array_column($pts, 1)) / count($pts), 5), 'lng' => round(array_sum(array_column($pts, 0)) / count($pts), 5)];
+                }
+            }
+        }
+        return $centers[$table . ':' . $id] ?? null;
+    }
+
     /** Feld „Website“: Schlüssel oder Host (ohne Port, auch mit https://) → Schlüssel der Website dieser Installation */
     public static function siteKey(string $v): ?string
     {

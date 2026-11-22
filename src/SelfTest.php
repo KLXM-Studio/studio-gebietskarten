@@ -239,6 +239,11 @@ final class SelfTest
             Render::reset();
             $html = Render::html($map);
             self::t(substr_count($html, 'class="gk-area ') === 2 && !preg_match('~\sstyle\s*=~i', $html), 'Ausgabe aus der Tabelle');
+            // „In deiner Nähe“: zuständige Gebiete und Website zu einer Fläche, Mitte eines Gebiets ohne Kartenfeld
+            [$reg, $sites] = Nearby::regionsFor('05170');
+            self::t(in_array($h . ':' . $e1, $reg, true) && !in_array($h . ':' . $e2, $reg, true) && $sites === [site()->key], 'Nähe: Kreis → zuständiges Gebiet und Website', (string) json_encode([$reg, $sites]));
+            $c = Nearby::pointOf($h, (int) $e1);
+            self::t($c !== null && $c['lat'] > 51.4 && $c['lat'] < 51.9 && $c['lng'] > 6.0 && $c['lng'] < 6.8, 'Nähe: Mitte des Gebiets als Kartenpunkt (Wesel + Kleve)', (string) json_encode($c));
         } catch (\Throwable $e) {
             self::t(false, 'Datentabellen-Bindung', $e->getMessage());
         } finally {

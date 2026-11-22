@@ -53,6 +53,16 @@ $editorData = [
 <p class="adm-flash adm-flash--warning" role="status"><?= e(__('Kartendaten fehlen für: {list}.', ['list' => implode(', ', array_map(fn($s) => Bases::LAENDER[$s] ?? $s, $geo['missing']))])) ?>
   <a href="<?= e(url(G::ADMIN . '/kartendaten')) ?>"><?= e(__('Kartendaten laden')) ?></a></p>
 <?php endif; ?>
+<?php // „In deiner Nähe“ (Core): Orte unterhalb der Kreisebene (z. B. Gevelsberg) findet die Karte nur mit Gemeindedaten der Länder im Ausschnitt
+$nearMissing = [];
+if (($map['source'] ?? 'own') === 'table' && $map['level'] !== 'gemeinden') Bases::files($map['base'], 'gemeinden', (array) $map['scope'], $nearMissing);
+if ($nearMissing && (can('settings.edit') || can(G::PERM))): ?>
+<form class="adm-flash adm-flash--info" method="post" action="<?= e(url(G::ADMIN . '/kartendaten')) ?>">
+  <?= csrf_field() ?><input type="hidden" name="do" value="install"><?php foreach ($nearMissing as $sn): ?><input type="hidden" name="parts[]" value="<?= e((string) $sn) ?>"><?php endforeach; ?>
+  <p><?= e(__('Für Orte unterhalb der Kreisebene (z. B. „In deiner Nähe“ mit einem Gemeindenamen) Gemeindedaten laden: {list}.', ['list' => implode(', ', array_map(fn($s) => Bases::LAENDER[$s] ?? $s, $nearMissing))])) ?></p>
+  <button class="adm-btn adm-btn--small" type="submit"><?= icon('download-simple') ?> <?= e(__('Gemeindedaten laden')) ?></button>
+</form>
+<?php endif; ?>
 <?php if ($geo['unmatched']): ?>
 <div class="adm-flash adm-flash--warning" role="status"><p><?= e(__('Einige Angaben passen zu keiner Fläche dieser Karte:')) ?></p><ul>
   <?php foreach ($geo['unmatched'] as $k => $list): ?><li><?= e(($byKey[$k]['name'] ?? $k) . ': ' . implode(', ', array_slice($list, 0, 12)) . (count($list) > 12 ? ' …' : '')) ?></li><?php endforeach; ?>

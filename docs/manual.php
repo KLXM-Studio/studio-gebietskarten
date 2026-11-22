@@ -34,7 +34,8 @@
   <p><b>Automatische Farben:</b> Die Palette hat elf gut unterscheidbare Farben (auch bei Farbsehschwäche) – Grau wird nie automatisch vergeben,
     damit kein Gebiet wie „nicht zugeordnet“ aussieht (von Hand bleibt es wählbar). Gebiete mit gemeinsamer Grenze bekommen immer verschiedene
     Farben; erst wenn alle Farben vergeben sind, wiederholt sich eine – und dann nur bei Gebieten, die nicht aneinandergrenzen. Auf allen
-    Palettenfarben erreichen die Namen in der Karte hell und dunkel mindestens 4,5:1 Kontrast.</p>
+    Palettenfarben erreichen die Namen in der Karte hell und dunkel mindestens 4,5:1 Kontrast. Statt der bunten Palette können Sie unter
+    <a href="#gebietskarten-darstellung">Darstellung</a> auch <i>Töne der Akzentfarbe</i> wählen.</p>
   <p>Ein Klick auf den Namen eines Gebiets öffnet seine Angaben: <b>Name</b>, <b>Farbe</b> (Design-Farben des Kits, die Palette oder eine
     eigene Farbe), <b>Link</b> (über die Linkauswahl, z. B. die Seite der Regionalgruppe), <b>Infotext</b>, <b>Bild</b> aus der Mediathek
     und <b>Kontakt</b>. Design-Farben und Palette passen sich hell und dunkel automatisch an.</p>
@@ -42,8 +43,30 @@
     leer, leitet Studio den Wert automatisch ab – passend zum dunklen Hintergrund Ihres Kits und so dunkel, dass die Namen in der Karte mindestens
     4,5:1 Kontrast haben. Unter den Farbfeldern sehen Sie den Kontrast der Beschriftung hell und im Dunkeln; liegt er unter 4,5:1, steht ein Hinweis
     daneben. Ihre eigene helle Farbe ändert Studio nie. Ob die Website überhaupt dunkel erscheint, stellen Sie unter <b>Design</b> ein („Dunkelmodus anbieten“).</p>
-  <p>Unter <b>Einstellungen der Karte</b> legen Sie fest, ob Flächen ohne Gebiet grau erscheinen, ob die Grenzen innerhalb der Gebiete und
-    die Namen in der Karte zu sehen sind (Gestaltung der Namen: siehe <a href="#gebietskarten-beschriftungen">Beschriftungen</a>), ob die Liste der Gebiete unter der Karte steht und ob der Ausschnitt nur bis zum Rand der Gebiete reicht.</p>
+  <p>Unter <b>Einstellungen der Karte</b> (<i>Inhalt der Karte</i>) legen Sie fest, ob Flächen ohne Gebiet grau erscheinen, ob die Grenzen innerhalb der Gebiete und
+    die Namen in der Karte zu sehen sind (Gestaltung: siehe <a href="#gebietskarten-darstellung">Darstellung</a> und <a href="#gebietskarten-beschriftungen">Beschriftungen</a>),
+    ob die Liste der Gebiete unter der Karte steht und ob der Ausschnitt nur bis zum Rand der Gebiete reicht.</p>
+
+  <h3 id="gebietskarten-darstellung">Darstellung</h3>
+  <p>Wie die Karte aussieht und reagiert, stellen Sie je Karte im Abschnitt <b>Darstellung</b> ein. Links steht die Vorschau wie auf der Website (mit den
+    Schaltern <b>Hell</b> und <b>Dunkel</b>); jede Änderung sehen Sie sofort – den Hover-Effekt, indem Sie mit der Maus über die Vorschau fahren.
+    Gespeichert wird mit <b>Darstellung speichern</b>. Das Kit liefert nur die Standardwerte (Farben, Schatten); alles Übrige entscheiden Sie hier.</p>
+  <ul>
+    <li><b>Hover- und Fokus-Effekt</b> – was passiert, wenn jemand mit der Maus über ein Gebiet fährt oder es mit der Tastatur (<kbd>Tab</kbd>) ansteuert:
+      <i>keiner</i> (wie bisher), <i>dezent</i> (die übrigen Gebiete treten zurück) oder <i>animiert</i> (das Gebiet hebt sich mit einer weichen,
+      leicht federnden Bewegung samt Schatten aus der Karte, sein Name geht mit). Auf Telefon und Tablet bleibt es beim Antippen wie gewohnt. Wer im
+      Betriebssystem „Bewegung reduzieren“ eingestellt hat, sieht bei <i>animiert</i> keine Bewegung, nur einen ruhigen Schatten.</li>
+    <li><b>Schatten unter der Karte</b> – ein weicher Schatten unter der ganzen Karte, im dunklen Farbschema etwas kräftiger.</li>
+    <li><b>Automatische Farben</b> – für alle Gebiete mit der Farbe „Automatisch“ (auch Karten aus einer Datentabelle ohne Farbfeld): die
+      <i>Palette</i> mit gut unterscheidbaren Farben oder <i>Töne der Akzentfarbe</i> – helle und kräftige Abstufungen der Akzentfarbe Ihres Kits,
+      hell und dunkel passend. Nachbargebiete bekommen immer verschiedene Töne; liegt ein Ton so, dass weder helle noch dunkle Schrift 4,5:1 erreicht,
+      passt Studio ihn leicht an.</li>
+    <li><b>Beschriftungen</b> – Schriftgröße, Stil und Großbuchstaben für die ganze Karte (je Gebiet abweichend unter <a href="#gebietskarten-beschriftungen">Beschriftungen</a>)
+      und <b>Schatten unter Pill-Beschriftungen</b>. Die Stile <i>Pill hell</i> (Fläche und Schrift des Kits, feiner Rand) und <i>Pill dunkel</i>
+      (dunkler Akzent, helle Schrift) setzen den Namen auf ein abgerundetes Etikett; beim Hover-Effekt <i>animiert</i> hebt es sich mit dem Gebiet,
+      sein Schatten wächst mit.</li>
+  </ul>
+  <p>Karten, die vor Version 0.4.0 angelegt wurden, bleiben unverändert: kein Hover-Effekt, kein Schatten, Palette wie bisher.</p>
 
   <h3 id="gebietskarten-beschriftungen">Beschriftungen</h3>
   <p>Die Namen in der Karte gestalten Sie im Abschnitt <b>Beschriftungen</b> unter der Karte. Er zeigt die Karte wie auf der Website (mit den
@@ -63,9 +86,11 @@
   </ul>
   <p><b>Stile:</b> <i>Automatisch hell oder dunkel</i> wählt je Gebiet die Schriftfarbe mit dem besseren Kontrast zur Gebietsfarbe – hell und im
     dunklen Farbschema getrennt. <i>Schrift des Kits mit Kontrastrand</i> ist die bisherige Darstellung, <i>dunkel</i> und <i>hell</i> legen die
-    Schriftfarbe fest, <i>Etikett</i> setzt den Namen auf ein dunkles Schild. Rechts sehen Sie Größe, Schriftfarbe und den Kontrast hell und im Dunkeln;
+    Schriftfarbe fest, <i>Etikett</i> setzt den Namen auf ein dunkles Schild, <i>Pill hell</i> und <i>Pill dunkel</i> auf ein abgerundetes Etikett
+    (siehe <a href="#gebietskarten-darstellung">Darstellung</a>). Rechts sehen Sie Größe, Schriftfarbe und den Kontrast hell und im Dunkeln;
     unter 4,5:1 erscheint eine Warnung, ebenso, wenn der Text nicht ganz in sein Gebiet passt.</p>
-  <p>Die Voreinstellungen der ganzen Karte (Schriftgröße, Stil, Großbuchstaben, Namen an/aus) stehen unter <b>Einstellungen der Karte</b>.
+  <p>Die Voreinstellungen der ganzen Karte (Schriftgröße, Stil, Großbuchstaben) stehen unter <a href="#gebietskarten-darstellung">Darstellung</a>,
+    die Namen an/aus unter <b>Einstellungen der Karte</b>.
     Änderungen sehen Sie sofort in der Karte; sie gelten erst nach <b>Beschriftungen speichern</b>.</p>
   <p><b>Automatische Lage:</b> Studio setzt jeden Namen in die Mitte der größten freien Fläche seines Gebiets – auch bei Gebieten mit Ausbuchtungen,
     bei denen der Schwerpunkt außerhalb läge. Karten, die vor Version 0.3.0 angelegt wurden, behalten ihre bisherige Lage, damit sich auf der Website nichts

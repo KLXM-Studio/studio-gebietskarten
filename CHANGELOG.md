@@ -1,5 +1,26 @@
 # Changelog – Gebietskarten (`klxm/studio-gebietskarten`)
 
+## 0.4.0 (2026-11-22)
+
+- **Abschnitt „Darstellung“ im Karteneditor:** Die Redaktion stellt das Aussehen je Karte selbst ein; die Vorschau zeigt jede Änderung sofort
+  (Entwurf, hell/dunkel) – den Hover-Effekt beim Überfahren mit der Maus. Gespeichert mit „Darstellung speichern“ (Route `POST …/{id}/darstellung`).
+  Schriftgröße, Stil und Großbuchstaben der Beschriftungen sind von „Einstellungen der Karte“ hierher umgezogen. Kits liefern nur Standardwerte (`--gk-*`).
+- **Hover- und Fokus-Effekt:** *keiner* (Standard), *dezent* (übrige Gebiete treten zurück, nur CSS mit `:has()`) oder *animiert*: Das Gebiet hebt sich
+  weich federnd (`cubic-bezier(.34, 1.56, .64, 1)`, Faktor `--gk-lift` 1,05 um den Pol der Unzugänglichkeit) mit mitwachsendem Schatten hervor, samt inneren
+  Grenzen (Kopie in einer Ebene über den Flächen und unter den Beschriftungen) – der Name geht mit. Tastaturfokus wie Hover (mit Fokusrand), auf
+  Touch-Geräten keine Hover-Animation, bei `prefers-reduced-motion` keine Bewegung, nur ein ruhiger Schatten. Nur Klassen und CSSOM, keine `style`-Attribute.
+- **Schatten unter der Karte** an/aus, im Dunkeln kräftiger (erzeugte Datei unter der Dunkel-Regel des Kits).
+- **Beschriftungsstil „Pill“:** *Pill hell* (Fläche und Schrift des Kits, feiner Rand) und *Pill dunkel* (Akzent dunkel, helle Schrift) – je Karte und je
+  Gebiet; abgerundetes Rechteck hinter dem Text (einzeilig `rx` = Höhe/2, mehrzeilig 0,6 em), Maße aus der Textschätzung plus Innenabstand – auch für
+  Platzprüfung, Größe „automatisch“ und Hinweislinie. Kontrastprüfung und Hinweise wie bei den anderen Stilen. Auf dem Telefon skaliert die Pill als Ganzes.
+  **Schatten der Pills** an/aus (`--gk-pill-shadow`), wächst beim Anheben mit.
+- **Automatische Farben: „Töne der Akzentfarbe“** als Alternative zur Palette – sechs Abstufungen der Akzentfarbe des Kits (hell und dunkel passend),
+  Nachbargebiete verschieden (Graphfärbung über die Topologie). Töne, auf denen weder helle noch dunkle Schrift 4,5:1 erreicht, werden leicht angepasst.
+  Für Karten ohne Farbfeld (z. B. Datentabellen).
+- **Bestandskarten unverändert:** Standard „keiner“, ohne Schatten, Palette wie bisher – Ausgabe Zeichen für Zeichen gleich (geprüft an sechs Karten,
+  Pixelvergleich Desktop/Telefon, hell/dunkel).
+- Selbsttest erweitert (141 Prüfungen), Handbuch, Entwicklerhandbuch, englische Texte.
+
 ## 0.3.0 (2026-11-22)
 
 - **Beschriftungen im Karteneditor:** neuer Abschnitt „Beschriftungen“ mit der Karte wie auf der Website (hell/dunkel). Je Gebiet: zeigen/ausblenden

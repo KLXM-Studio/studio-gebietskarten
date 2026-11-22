@@ -19,12 +19,18 @@ use Core\Contrast;
  *    Stylesheet-Datei (sheet()) mit der Dunkel-Regel des Kits. Dunkel-Wert: eigenes Feld „im Dunkeln“ oder automatisch
  *    abgeleitet (dark()) – mit dem Dunkel-Hintergrund gemischt und so weit abgedunkelt, dass die Beschriftung in der Karte
  *    (Schriftfarbe des Kits im Dunkeln) mindestens 4,5:1 erreicht.
+ *  - Preset „Töne der Akzentfarbe“ (seit 0.4.0, Option palette = accent): automatische Farben als abgestufte Töne der
+ *    Akzentfarbe des Kits (Klasse gk-c-a1 … gk-c-a6, color-mix in sRGB mit Hintergrund bzw. Schrift des Kits – hell wie dunkel
+ *    automatisch), Nachbarn wie bei der Palette verschieden (Graphfärbung über die Topologie).
  * Farben in CSS: assets/css/gebietskarten.css (Variablen --gk-*, alle vom Kit überschreibbar).
  */
 final class Colors
 {
     /** Mindestkontrast der Beschriftung (Namen in der Karte) zur Fläche */
     public const MIN_LABEL = 4.5;
+
+    /** Schatten im Dunkeln (erzeugte Datei bzw. Vorschau der Verwaltung) – hell: assets/css/gebietskarten.css */
+    public const DARK_SHADOWS = '--gk-shadow:0 6px 16px rgb(0 0 0 / .6);--gk-pill-shadow:0 1.5px 4px rgb(0 0 0 / .7);--gk-pill-shadow-up:0 5px 10px rgb(0 0 0 / .75);--gk-lift-shadow:0 10px 18px rgb(0 0 0 / .7)';
 
     /** In dieser Anfrage bereits eingebundene Dateien der Dunkel-Regeln */
     private static array $sheets = [];
@@ -50,6 +56,50 @@ final class Colors
 
     /** Reihenfolge der automatischen Farben – ohne Grau (p8 bleibt von Hand wählbar) */
     public const AUTO = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p9', 'p10', 'p11', 'p12'];
+
+    /**
+     * Töne der Akzentfarbe (Preset palette = accent): [mit, Anteil Akzent in Prozent] – mit = bg (Hintergrund des Kits, heller
+     * Ton) bzw. ink (Schrift des Kits, kräftiger Ton). Im Dunkeln tauschen bg und ink die Rollen von selbst (Kit-Vertrag).
+     * Gleiche Werte in assets/css/gebietskarten.css (.gk-c-a1 …).
+     */
+    public const TONES = ['a1' => ['bg', 14], 'a2' => ['bg', 32], 'a3' => ['bg', 55], 'a4' => ['ink', 96], 'a5' => ['ink', 72], 'a6' => ['ink', 48]];
+
+    /** Reihenfolge der Töne bei automatischer Vergabe: hell und kräftig im Wechsel */
+    public const TONE_ORDER = ['a2', 'a5', 'a3', 'a6', 'a1', 'a4'];
+
+    /** Ton der Akzentfarbe wie im CSS (color-mix in sRGB), ohne Anpassung. $kit: Preview::kit() */
+    public static function toneRaw(string $key, array $kit): string
+    {
+        [$with, $pct] = self::TONES[$key] ?? ['bg', 50];
+        $accent = self::hex((string) ($kit['accent'] ?? '')) ?: '#2f6f8f';
+        $mix = $with === 'ink' ? (self::hex((string) ($kit['ink'] ?? '')) ?: '#1b1f24') : (self::hex((string) ($kit['bg'] ?? '')) ?: '#ffffff');
+        return strtolower(Contrast::mix($accent, $mix, $pct));
+    }
+
+    /**
+     * Ton der Akzentfarbe, auf dem die Beschriftung (dunkel oder hell, Labels::DARK/LIGHT) mindestens MIN_LABEL erreicht: Liegt
+     * der Ton im Zwischenbereich, wird er etwas dunkler (für helle Schrift) bzw. heller (für dunkle Schrift) – je nachdem, was
+     * näher liegt. Render::paints() gibt angepasste Töne als feste Farben aus (wie eigene Farben), sonst als Klasse gk-c-aN.
+     */
+    public static function tone(string $key, array $kit): string
+    {
+        $c = self::toneRaw($key, $kit);
+        $best = static fn(string $x): float => max(Contrast::ratio($x, Labels::DARK), Contrast::ratio($x, Labels::LIGHT));
+        if ($best($c) >= self::MIN_LABEL) return $c;
+        $to = Contrast::ratio($c, Labels::LIGHT) >= Contrast::ratio($c, Labels::DARK) ? '#000000' : '#ffffff';
+        $x = $c;
+        for ($p = 96; $p >= 50; $p -= 2) {
+            $x = strtolower(Contrast::mix($c, $to, $p));
+            if ($best($x) >= self::MIN_LABEL) break;
+        }
+        return $x;
+    }
+
+    /** @return array<string, string> */
+    public static function presetOptions(): array
+    {
+        return ['default' => __('Palette (gut unterscheidbare Farben)'), 'accent' => __('Töne der Akzentfarbe')];
+    }
 
     /** @return array<string, string> */
     public static function paletteLabels(): array
@@ -106,8 +156,9 @@ final class Colors
      * @param array<string, list<string>> $neighbors  Schlüssel → Schlüssel der Nachbarn
      * @return array<string, string> Schlüssel → wirksame Farbe
      */
-    public static function assign(array $regions, array $neighbors = []): array
+    public static function assign(array $regions, array $neighbors = [], string $preset = 'default'): array
     {
+        $auto = $preset === 'accent' ? self::TONE_ORDER : self::AUTO;
         $out = [];
         $count = [];
         foreach ($regions as $r) {
@@ -116,16 +167,16 @@ final class Colors
             $out[(string) $r['key']] = $c;
             $count[$c] = ($count[$c] ?? 0) + 1;
         }
-        $n = count(self::AUTO);
+        $n = count($auto);
         foreach (array_values($regions) as $i => $r) {
             $key = (string) $r['key'];
             if (isset($out[$key])) continue;
             $taken = [];
             foreach ($neighbors[$key] ?? [] as $k) if (isset($out[$k])) $taken[$out[$k]] = true;
-            $best = self::AUTO[$i % $n];
+            $best = $auto[$i % $n];
             $score = null;
             for ($j = 0; $j < $n; $j++) {
-                $c = self::AUTO[($i + $j) % $n];
+                $c = $auto[($i + $j) % $n];
                 // zuerst: kein Nachbar hat die Farbe; dann die seltenste Farbe; dann die Nähe zur Position
                 $s = [isset($taken[$c]) ? 1 : 0, $count[$c] ?? 0, $j];
                 if ($score === null || $s < $score) { $best = $c; $score = $s; }
@@ -199,6 +250,7 @@ final class Colors
         if (isset(self::PALETTE[$effective])) return strtolower(Contrast::mix(self::PALETTE[$effective], $kit['bg'] ?? '#ffffff', self::mixOf($effective)));
         $accent = $kit['accent'] ?? '#2f6f8f';
         $bg = $kit['bg'] ?? '#ffffff';
+        if (isset(self::TONES[$effective])) return self::tone($effective, $kit);
         return strtolower(match ($effective) {
             'accent' => $accent,
             'accent-soft' => Contrast::mix($accent, $bg, 45),
@@ -252,10 +304,10 @@ final class Colors
      * @param array{media: string, scope: string, extra: list<string>}|null $rule
      * @param array<string, string> $palette  Palettenfarbe (p1 …) → Dunkel-Wert
      */
-    public static function sheetCss(array $pairs, ?array $rule, array $palette = [], bool $labelTones = false): string
+    public static function sheetCss(array $pairs, ?array $rule, array $palette = [], bool $labelTones = false, bool $shadows = false): string
     {
-        if ((!$pairs && !$palette && !$labelTones) || !$rule) return '';
-        $body = static function (string $pre) use ($pairs, $palette, $labelTones): string {
+        if ((!$pairs && !$palette && !$labelTones && !$shadows) || !$rule) return '';
+        $body = static function (string $pre) use ($pairs, $palette, $labelTones, $shadows): string {
             $out = [];
             foreach ($pairs as [$l, $d]) {
                 $c = '.' . self::pairClass($l, $d);
@@ -267,6 +319,8 @@ final class Colors
                 $out[] = $pre . ' .gk-labels .gk-tdk-d{fill:var(--gk-lab-dark);stroke:var(--gk-lab-light);stroke-width:4px}';
                 $out[] = $pre . ' .gk-labels .gk-tdk-l{fill:var(--gk-lab-light);stroke:var(--gk-lab-dark);stroke-width:3px}';
             }
+            // Schatten (Karte, Pills, Hover „animiert“) im Dunkeln kräftiger (seit 0.4.0)
+            if ($shadows) $out[] = $pre . ' .gk{' . self::DARK_SHADOWS . '}';
             return implode("\n", $out);
         };
         $css = $rule['media'] !== '' ? '@media ' . $rule['media'] . "{\n" . $body($rule['scope']) . "\n}\n" : $body($rule['scope']) . "\n";
@@ -280,8 +334,9 @@ final class Colors
      * @param list<array{0: string, 1: string}> $pairs [hell, dunkel]
      * @param array<string, string> $palette  Palettenfarbe → Dunkel-Wert
      * @param bool $labelTones  Regeln für Beschriftungen mit anderem Ton im Dunkeln (Labels::needsDarkTones)
+     * @param bool $shadows  kräftigere Schatten im Dunkeln (Schatten der Karte, der Pills, Hover „animiert“)
      */
-    public static function sheet(array $pairs, array $palette = [], bool $labelTones = false): string
+    public static function sheet(array $pairs, array $palette = [], bool $labelTones = false, bool $shadows = false): string
     {
         $clean = [];
         foreach ($pairs as [$l, $d]) {
@@ -293,11 +348,11 @@ final class Colors
             $d = self::hex((string) $d);
             if (isset(self::PALETTE[$k]) && $d !== '') $pal[(string) $k] = $d;
         }
-        if (!$clean && !$pal && !$labelTones) return '';
+        if (!$clean && !$pal && !$labelTones && !$shadows) return '';
         ksort($clean);
         ksort($pal, SORT_NATURAL);
         $pairs = array_values($clean);
-        $css = self::sheetCss($pairs, self::darkRule(), $pal, $labelTones);
+        $css = self::sheetCss($pairs, self::darkRule(), $pal, $labelTones, $shadows);
         if ($css === '') return '';
         $name = 'farben-' . substr(sha1($css), 0, 12) . '.css';
         $dir = site()->mediaDir('gebietskarten');

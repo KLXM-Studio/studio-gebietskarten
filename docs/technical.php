@@ -13,7 +13,7 @@
       <code>assets/</code> (Quellen) und <code>public/</code> (gebaut, <code>extensions:publish</code>).</li>
     <li><b>Integrationspunkte:</b> <code>feature()</code> + <code>permissions()</code> (<code>gebietskarten.edit</code>), <code>table()</code>
       (<code>gebietskarten_maps</code>, <code>gebietskarten_regions</code>), <code>blocks()</code> (Typ <code>gebietskarte</code>), <code>adminPage()</code>
-      (Art <code>content</code>), <code>adminAssets()</code> (Editor-Skript nur auf der Bearbeiten-Seite), <code>routes()</code> (alle unter
+      (Art <code>content</code>), <code>adminAssets()</code> (Editor-Skript und Skript der Website – Hover in der Vorschau – nur auf der Bearbeiten-Seite), <code>routes()</code> (alle unter
       <code>/admin/gebietskarten</code> mit Recht, CSRF über den Router), <code>health()</code>, <code>backupSkip()</code> (nachladbare Daten und Zwischenspeicher),
       <code>docs()</code>, <code>command()</code>.</li>
     <li><b>Befehle:</b> <code>gebietskarten:daten [--land=05,06] [--from=URL|Ordner] [--list] [--remove]</code>, <code>gebietskarten:selftest</code>.</li>
@@ -49,8 +49,51 @@ $svg = Render::svg(Repo::map(3));                                               
       (<code>media/gebietskarten/farben-{prüfsumme}.css</code>, wie die Design-Datei des Cores; <code>style-src 'self'</code>) unter der Dunkel-Regel des Kits
       (<code>design.dark</code>: <code>media</code> + <code>scope</code>, Schalter-Klasse <code>manual.dark</code>, <code>force</code>) – ohne Dunkel-Angabe des Kits bleiben
       eigene Farben hell. Ältere Dateien werden nach sieben Tagen entfernt. In der Vorschau der Verwaltung trägt jede Fläche <code>--gk-d</code> inline.</li>
-    <li>Stylesheet <code>css/gebietskarten.css</code> einmal je Seite; Skript <code>js/gebietskarten.js</code> (unter 2 KB) nur beim Info-Fenster.
-      Position des Fensters per CSSOM.</li>
+    <li>Stylesheet <code>css/gebietskarten.css</code> einmal je Seite; Skript <code>js/gebietskarten.js</code> (unter 4 KB) nur beim Info-Fenster oder beim
+      Hover-Effekt „animiert“. Position des Fensters per CSSOM.</li>
+  </ul>
+
+  <h3 id="gebietskarten-darstellung-tech">Darstellung (seit 0.4.0)</h3>
+  <p>Optionen der Karte (<code>options</code>, <code>Repo::LOOK</code>), gepflegt im Abschnitt „Darstellung“ des Editors über
+    <code>POST /admin/gebietskarten/{id}/darstellung</code> (JSON <code>{options, draft}</code>; <code>draft</code> zeichnet nur die Vorschau,
+    <code>Repo::look()</code> bereinigt, <code>Repo::saveLook()</code> speichert). Das Formular „Einstellungen“ lässt diese Werte unverändert.
+    Standard = bisheriges Aussehen; Bestandskarten bekommen keine zusätzliche Klasse, kein Attribut und kein Skript (Ausgabe Zeichen für Zeichen gleich).</p>
+  <table class="doc-table">
+    <tr><th>Option</th><th>Werte</th><th>Ausgabe</th></tr>
+    <tr><td><code>hover</code></td><td><code>none|subtle|lift</code></td><td><code>gk--hover-subtle</code>: nur CSS (<code>.gk-areas:has(&gt; .gk-area:hover)</code>, Maus nur bei
+      <code>@media (hover: hover)</code>, <code>:focus-visible</code> immer) dunkelt die übrigen Gebiete auf <code>--gk-dim</code> ab.
+      <code>gk--hover-lift</code>: jedes Gebiet mit <code>data-gk-k</code> und <code>data-gk-pole="x y"</code> (Pol der Unzugänglichkeit), jede Beschriftung in einer
+      Hülle <code>&lt;g class="gk-lk" data-gk-k&gt;</code>; Skript siehe unten.</td></tr>
+    <tr><td><code>shadow</code></td><td>bool</td><td><code>gk--shadow</code>: <code>filter: drop-shadow(var(--gk-shadow))</code> am SVG.</td></tr>
+    <tr><td><code>pill_shadow</code></td><td>bool</td><td><code>gk--pillshadow</code>: <code>drop-shadow(var(--gk-pill-shadow))</code> am Rechteck der Pills, beim Anheben
+      <code>--gk-pill-shadow-up</code>.</td></tr>
+    <tr><td><code>palette</code></td><td><code>default|accent</code></td><td>automatische Farben: Palette oder Töne der Akzentfarbe (<code>Colors::assign($regions, $neighbors, $preset)</code>).</td></tr>
+    <tr><td><code>label_style</code></td><td>+ <code>pill-light|pill-dark</code></td><td>auch je Gebiet (<code>labels.r{id}.style</code>).</td></tr>
+  </table>
+  <ul>
+    <li><b>Hover „animiert“</b> (<code>js/gebietskarten.js</code>, Ereignisse am Dokument – gilt auch für nachgeladene Vorschauen): bei <code>pointerover</code>
+      (nicht <code>pointerType</code> touch) bzw. <code>focusin</code> mit <code>:focus-visible</code> eine Ebene <code>&lt;g class="gk-lift" aria-hidden="true"&gt;</code>
+      vor <code>.gk-labels</code> (also über Flächen und Linien, unter den Beschriftungen) mit einer Kopie des Pfads (Klassen des Gebiets, <code>gk-area</code> →
+      <code>gk-liftarea</code>) und den Linien der Karte, beschnitten per <code>clipPath</code> auf das Gebiet. <code>transform-origin</code> am Pol per CSSOM
+      (keine <code>style</code>-Attribute im HTML, CSP <code>style-src 'self'</code>), Klasse <code>is-up</code> → <code>scale(var(--gk-lift))</code> mit
+      <code>cubic-bezier(.34, 1.56, .64, 1)</code> und <code>drop-shadow(var(--gk-lift-shadow))</code>; dieselbe Klasse an der Beschriftung. Tastaturfokus:
+      <code>is-focus</code> zeichnet den Fokusrand an der Kopie. <code>prefers-reduced-motion: reduce</code>: kein <code>transform</code>, keine Übergänge – nur der Schatten.</li>
+    <li><b>Pill</b> (<code>Labels::isPill()</code>): <code>&lt;g class="gk-pill gk-pill-l|d"&gt;&lt;rect class="gk-pill__bg" rx&gt;&lt;text&gt;</code>. Maße
+      <code>Labels::pillBox()</code> = <code>box()</code> + <code>PILL_PAD</code> (0,55 / 0,32 em), auch für Platzprüfung, Größe „automatisch“ und Hinweislinie;
+      <code>rx</code> = Höhe/2, mehrzeilig 0,6 em. Farben: <code>--gk-pill-bg</code> (<code>--kit-surface</code>), <code>--gk-pill-ink</code>, <code>--gk-pill-line</code>,
+      <code>--gk-pill-dark-bg</code> (<code>color-mix(in srgb, --kit-accent 45 %, #000)</code> = <code>Labels::pillDark()</code>), <code>--gk-pill-dark-ink</code>.
+      Kontrast in <code>Labels::tone()</code> (Töne <code>pl</code>/<code>pd</code>). Telefon: die Gruppe skaliert um ihre Mitte
+      (<code>transform-box: fill-box</code>, Klasse <code>gk-pz-{größe}{telefon}</code> = Verhältnis der Schriftgrößen), statt die Schrift zu vergrößern – so passt das Rechteck.
+      Das Rechteck nimmt keine Zeigerereignisse an (Klicks gehen an das Gebiet).</li>
+    <li><b>Töne der Akzentfarbe:</b> <code>Colors::TONES</code> (<code>a1</code>–<code>a3</code> mit <code>--kit-bg</code>, <code>a4</code>–<code>a6</code> mit
+      <code>--kit-ink</code> gemischt, sRGB), Reihenfolge <code>TONE_ORDER</code> (hell und kräftig im Wechsel), Nachbarn wie bei der Palette verschieden. Ausgabe als Klasse
+      <code>gk-c-aN</code> – das CSS mischt mit den Kit-Farben, im Dunkeln von selbst passend. Erreicht ein Ton (nach <code>Preview::kit()</code>) weder mit
+      <code>Labels::DARK</code> noch mit <code>LIGHT</code> 4,5:1, verschiebt <code>Colors::tone()</code> ihn leicht dunkler bzw. heller; <code>Render::paints()</code> gibt ihn
+      dann als feste Farbe aus (wie eine eigene Farbe, Dunkel-Wert in <code>farben-….css</code>).</li>
+    <li><b>Dunkel:</b> Schatten im Dunkeln kräftiger – <code>Colors::DARK_SHADOWS</code> in der erzeugten Datei unter der Dunkel-Regel des Kits
+      (<code>Colors::sheet(…, $shadows)</code>), in der Vorschau „Dunkel“ der Verwaltung dieselben Werte per CSS.</li>
+    <li><b>Kits</b> steuern nur Standardwerte über Variablen: <code>--gk-shadow</code>, <code>--gk-lift</code> (1,05), <code>--gk-lift-shadow</code>, <code>--gk-pill-*</code>,
+      <code>--gk-dim</code>; die Auswahl trifft die Redaktion je Karte.</li>
   </ul>
 
   <h3 id="gebietskarten-labels">Beschriftungen (<code>Labels</code>, seit 0.3.0)</h3>
@@ -58,7 +101,7 @@ $svg = Render::svg(Repo::map(3));                                               
     <li><b>Daten:</b> Spalte <code>gebietskarten_maps.labels</code> (JSON) je Gebiet (<code>r{id}</code> bzw. <code>e{eintrag}</code>, auch bei Datentabellen –
       „Kartenmetadaten“): <code>show</code> (<code>on|off</code>, sonst Karte), <code>text</code> (bis 3 Zeilen, 120 Zeichen), <code>pos</code>/<code>anchor</code>
       (<code>[Länge, Breite]</code> – unabhängig vom Ausschnitt), <code>leader</code>, <code>size</code> (<code>auto|s|m|l</code>), <code>style</code>
-      (<code>auto|kit|dark|light|tag</code>), <code>caps</code>. <code>Labels::clean()</code>/<code>cleanAll()</code> behalten nur gültige, abweichende Werte.
+      (<code>auto|kit|dark|light|tag|pill-light|pill-dark</code>), <code>caps</code>. <code>Labels::clean()</code>/<code>cleanAll()</code> behalten nur gültige, abweichende Werte.
       Karte (<code>options</code>): <code>labels</code>, <code>label_size</code>, <code>label_style</code>, <code>label_caps</code>, <code>label_mode</code>.
       Text aus der Datentabelle: Bindung <code>label</code> (Feld Text/Textfeld) → <code>$region['label_field']</code>; Schreiben über
       <code>Labels::saveEntryTexts()</code> mit <code>Entries::save()</code> und <code>EntryEdit::reason()</code> wie die Zuordnung per Klick.</li>
@@ -135,4 +178,5 @@ $svg = Render::svg(Repo::map(3));                                               
     seit 0.2.0 Dunkel-Werte und Kontrast, Dunkel-Regel als Datei, Auflösen der Kit-Farben, Reihenfolge und die Zuordnung in Einträge mit Rollen „Autorin“ und
     „Redaktion“ – Version, Protokoll, Status; seit 0.3.0 Beschriftungen: Pol der Unzugänglichkeit, Platzprüfung, Bereinigen, Bestandskarten unverändert,
     „Automatisch neu setzen“, Größe nach Fläche, Ton und Kontrast, Hinweislinie, Etikett, Zeilenumbruch, Telefon-Regel, Editor-Auszeichnung, Export,
-    Text aus Datentabellen).</p>
+    Text aus Datentabellen; seit 0.4.0 Darstellung: Bereinigen, Bestandskarten ohne neue Auszeichnung, Hover dezent/animiert (Pole, Hüllen, Skript),
+    Schatten im Dunkeln, Pills mit Maßen, Radius, Kontrast und Telefon-Skalierung, Töne der Akzentfarbe mit Nachbarn verschieden und Kontrast).</p>

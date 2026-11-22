@@ -15,7 +15,9 @@ use Core\Data\Tables;
  * Prüfsumme; seit 0.2.0: Reihenfolge, eigene Farben im Dunkeln (Kontrast der Beschriftung, Dunkel-Regel als Datei),
  * Kit-Farben wie auf der Website (Stylesheet + Design-Werte), Zuordnung per Klick in Einträge einer Datentabelle (Rechte,
  * Status, Version, Protokoll); seit 0.3.0 Beschriftungen (Pol der Unzugänglichkeit, Größe nach Fläche, Text mit Zeilenumbruch,
- * Stil und Kontrast, Hinweislinie, Telefon-Regel, Bestandskarten unverändert, Text aus Einträgen). Legt Testdaten (Karten,
+ * Stil und Kontrast, Hinweislinie, Telefon-Regel, Bestandskarten unverändert, Text aus Einträgen); seit 0.4.0 Darstellung
+ * (Hover dezent/animiert, Schatten, Pills hell/dunkel mit Kontrast und Telefon-Skalierung, Töne der Akzentfarbe mit Nachbarn
+ * verschieden, Bestandskarten ohne zusätzliche Auszeichnung). Legt Testdaten (Karten,
  * Tabelle, zwei Konten) an und entfernt sie danach wieder.
  */
 final class SelfTest
@@ -58,6 +60,8 @@ final class SelfTest
         self::attribution();
         echo "Beschriftungen (Lage, Text, Größe, Stil, Hinweislinie, Bestandskarten)\n";
         self::labels();
+        echo "Darstellung (Hover, Schatten, Pills, Töne der Akzentfarbe)\n";
+        self::look();
         echo "Zuordnung per Klick in Einträge (Datentabelle)\n";
         self::entryAssign();
         echo "Nachladen (Prüfsumme)\n";
@@ -495,6 +499,126 @@ final class SelfTest
             if ($mapId) Repo::deleteMap($mapId);
             if ($x = Tables::find($h)) Tables::delete($x);
         }
+    }
+
+    /** Darstellung (seit 0.4.0): Optionen, Hover-Effekte, Schatten, Pills, Töne der Akzentfarbe */
+    private static function look(): void
+    {
+        $o = Repo::look(Repo::OPTIONS, ['hover' => 'evil', 'shadow' => 'yes', 'pill_shadow' => '0', 'palette' => 'accent', 'label_style' => 'pill-dark', 'label_mode' => 'legacy', 'fit' => 'regions']);
+        self::t($o['hover'] === 'none' && $o['shadow'] === true && $o['pill_shadow'] === false && $o['palette'] === 'accent' && $o['label_style'] === 'pill-dark'
+            && $o['label_mode'] === 'pole' && $o['fit'] === 'scope', 'Darstellung bereinigt (unbekannte Werte → Standard, nur Optionen der Darstellung)');
+        $css = (string) file_get_contents(Gebietskarten::dir() . '/assets/css/gebietskarten.css');
+        $adm = (string) file_get_contents(Gebietskarten::dir() . '/assets/css/gebietskarten-admin.css');
+        $ids = [];
+        try {
+            // Bestandskarte (Optionen ohne die neuen Schlüssel): keine zusätzliche Auszeichnung
+            $old = (int) app()->db->insert(Repo::MAPS, ['title' => 'Selbsttest Darstellung alt', 'base' => 'de', 'level' => 'kreise', 'scope' => '05', 'source' => 'own',
+                'binding' => '{}', 'options' => json_encode(['rest' => true, 'fit' => 'scope', 'lines' => true, 'labels' => true, 'list' => true, 'label_mode' => 'pole', 'label_size' => 'auto', 'label_style' => 'auto', 'label_caps' => false]),
+                'created_at' => now(), 'updated_at' => now()]);
+            $ids[] = $old;
+            Repo::saveRegion($old, null, ['name' => 'Nord', 'units' => '05170, 05154']);
+            $m = (array) Repo::map($old);
+            self::t($m['options']['hover'] === 'none' && !$m['options']['shadow'] && !$m['options']['pill_shadow'] && $m['options']['palette'] === 'default', 'Bestandskarte: Darstellung wie bisher (kein Hover-Effekt, kein Schatten, Palette)');
+            Render::reset();
+            $html = Render::html($m);
+            self::t(!preg_match('~gk--hover|gk--shadow|gk--pillshadow|data-gk-pole|gk-lk|gk-pill~', $html) && !str_contains($html, 'js/gebietskarten.js'), 'Bestandskarte: keine neuen Klassen, Attribute oder Skripte');
+
+            // animiert + Schatten + Pill hell + Töne
+            $id = Repo::saveMap(null, ['title' => 'Selbsttest Darstellung', 'level' => 'kreise', 'scope' => ['05'], 'options' => ['labels' => true] + Repo::OPTIONS]);
+            $ids[] = $id;
+            $names = ['Nord', 'Ost', 'Süd', 'West', 'Mitte'];
+            foreach ([['05170', '05154', '05166'], ['05515', '05554', '05558'], ['05374', '05378', '05382'], ['05358', '05362', '05366'], ['05911', '05913', '05914']] as $i => $u) {
+                Repo::saveRegion($id, null, ['name' => $names[$i], 'units' => implode(',', $u), 'link' => '/kontakt']);
+            }
+            Repo::saveLook($id, ['hover' => 'lift', 'shadow' => true, 'pill_shadow' => true, 'palette' => 'accent', 'label_style' => 'pill-light']);
+            Repo::saveLabels($id, [Repo::regions($id)[3]['key'] => ['text' => "West mit\nZeilenumbruch"]]);
+            $m = (array) Repo::map($id);
+            self::t($m['options']['hover'] === 'lift' && $m['options']['shadow'] && $m['options']['palette'] === 'accent' && $m['options']['label_mode'] === 'pole', 'Darstellung gespeichert, Lage der Beschriftung bleibt');
+            Repo::saveMap($id, ['title' => 'Selbsttest Darstellung', 'level' => 'kreise', 'scope' => ['05'], 'options' => $m['options']]);
+            self::t(((array) Repo::map($id))['options']['hover'] === 'lift', 'Einstellungen speichern behält die Darstellung');
+            Render::reset();
+            $html = Render::html($m, ['action' => 'link']);
+            $regions = Bound::regionsOf($m);
+            self::t(!preg_match('~\sstyle\s*=~i', $html) && !preg_match('~<script(?![^>]*\bsrc=)~i', $html), 'Website: keine style-Attribute, keine Inline-Skripte');
+            self::t((bool) preg_match('~<figure class="gk [^"]*gk--hover-lift gk--shadow gk--pillshadow"~', $html) && str_contains($html, 'js/gebietskarten.js'), 'animiert: Klassen an der Karte, Skript geladen');
+            self::t(preg_match_all('~<a class="gk-area [^"]*" data-gk-k="(r\d+)" data-gk-pole="[\d.]+ [\d.]+" href=~', $html, $am) === 5, 'animiert: Schlüssel und Pol an jedem Gebiet', (string) count($am[1] ?? []));
+            self::t(preg_match_all('~<g class="gk-lk" data-gk-k="(r\d+)">~', $html, $lm) === 5 && !array_diff($lm[1], $am[1]), 'Beschriftungen in Hüllen mit dem Schlüssel ihres Gebiets');
+            self::t(preg_match_all('~<g class="gk-pill gk-pill-l[^"]*"><rect class="gk-pill__bg" x="[\d.]+" y="[\d.]+" width="([\d.]+)" height="([\d.]+)" rx="([\d.]+)"/><text~', $html, $pm, PREG_SET_ORDER) === 5, 'Pill hell: Rechteck hinter dem Text');
+            $geo = Render::geometry($m, $regions);
+            $lay = Labels::layout($m, $regions, $geo, Colors::assign($regions, $geo['neighbors'], 'accent'), false, true);
+            $okRx = true;
+            foreach ($lay as $l) {
+                $n = count($l['lines']);
+                [$bw, $bh] = Labels::box($l['lines'], $l['fs'], $l['caps']);
+                if ($l['w'] <= $bw || $l['h'] <= $bh || abs(Labels::pillRadius($n, $l['fs'], $l['h']) - ($n > 1 ? 0.6 * $l['fs'] : $l['h'] / 2)) > 0.11) $okRx = false;
+            }
+            self::t($okRx, 'Pill: Maße aus box() plus Innenabstand, rx = Höhe/2 (mehrzeilig 0,6 em)');
+            $multi = array_values(array_filter($lay, fn($l) => count($l['lines']) > 1));
+            self::t($multi && $multi[0]['lines'] === ['West mit', 'Zeilenumbruch'], 'Pill mehrzeilig');
+            self::t(!array_filter($lay, fn($l) => $l['cL'] < Colors::MIN_LABEL || $l['cD'] < Colors::MIN_LABEL), 'Pill hell: Kontrast hell und dunkel ≥ 4,5:1 (Fläche und Schrift des Kits)');
+            $effs = Colors::assign($regions, $geo['neighbors'], 'accent');
+            self::t(!array_diff($effs, array_keys(Colors::TONES)), 'Töne der Akzentfarbe statt Palette', implode(',', $effs));
+            self::t((bool) preg_match('~class="gk-area (gk-c-a\d|gk-c-own gk-x-)~', $html), 'Töne als Klasse (bzw. feste Farbe, wenn für den Kontrast angepasst)');
+            $sheet = preg_match('~<link rel="stylesheet" href="([^"]*/gebietskarten/farben-[0-9a-f]{12}\.css)">~', $html, $sm) ? site()->mediaDir('gebietskarten/' . basename($sm[1])) : '';
+            self::t(!Colors::darkRule() || ($sheet !== '' && str_contains((string) file_get_contents($sheet), Colors::DARK_SHADOWS)), 'Schatten im Dunkeln kräftiger (erzeugte Datei unter der Dunkel-Regel)');
+            self::t(str_contains($adm, '.gk-prevbox[data-scheme="dark"] .gk { ' . Colors::DARK_SHADOWS . '; }'), 'Vorschau „Dunkel“ der Verwaltung: dieselben Schatten');
+            $svg = Render::svg($m);
+            self::t(@simplexml_load_string($svg) !== false && substr_count($svg, '<rect x=') >= 5 && str_contains($svg, ' rx="'), 'SVG-Export: Pills als Rechteck mit runden Ecken');
+
+            // dezent + Pill dunkel
+            Repo::saveLook($id, ['hover' => 'subtle', 'label_style' => 'pill-dark', 'palette' => 'default']);
+            Render::reset();
+            $html = Render::html((array) Repo::map($id), ['action' => 'link']);
+            self::t(str_contains($html, 'gk--hover-subtle') && !str_contains($html, 'data-gk-pole') && !str_contains($html, 'js/gebietskarten.js') && substr_count($html, 'gk-pill gk-pill-d') === 5, 'dezent: nur CSS (kein Skript, keine Pole), Pill dunkel');
+            self::t((bool) preg_match('~\.gk--hover-subtle \.gk-areas:has\(> \.gk-area:hover\) > \.gk-area:not\(:hover\) path \{ fill-opacity~', $css)
+                && str_contains($css, '.gk--hover-subtle .gk-areas:has(> .gk-area:focus-visible)'), 'dezent: übrige Gebiete abdunkeln bei Hover und Tastaturfokus');
+        } catch (\Throwable $e) {
+            self::t(false, 'Darstellung', $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine());
+        } finally {
+            foreach ($ids as $x) Repo::deleteMap($x);
+        }
+
+        // Pill dunkel: Kontrast mit heller Schrift für verschiedene Akzentfarben (auch Gelb), hell und dunkel
+        $bad = [];
+        foreach (['#2f6f8f', '#7cc4e4', '#f0c000', '#ffff00', '#66aa33', '#ffffff', (string) Preview::kit(false)['accent'], (string) Preview::kit(true)['accent']] as $a) {
+            [, $c] = Labels::tone('pill-dark', '#cccccc', ['accent' => $a, 'bg' => '#ffffff', 'ink' => '#1b1f24']);
+            if ($c < Colors::MIN_LABEL) $bad[] = "$a $c";
+        }
+        self::t(!$bad, 'Pill dunkel: helle Schrift ≥ 4,5:1 für jede Akzentfarbe', implode(', ', $bad));
+        self::t(str_contains($css, '--gk-pill-dark-bg: color-mix(in srgb, var(--kit-accent, #2f6f8f) ' . Labels::PILL_DARK . '%, #000)'), 'Pill dunkel: CSS mischt wie PHP');
+        // Telefon: Pill-Gruppe skaliert um ihre Mitte (Telefon-Größe / Größe)
+        $miss = [];
+        foreach (['l' => ['l', 'm', 's'], 'm' => ['m', 's'], 's' => ['s']] as $sz => $phones) foreach ($phones as $ph) {
+            $f = rtrim(rtrim(number_format(Labels::PHONE[$ph] / Labels::SIZES[$sz], 4, '.', ''), '0'), '.');
+            $f = str_starts_with($f, '0.') ? substr($f, 1) : $f;
+            if (!str_contains($css, '.gk-pz-' . $sz . $ph . ' { transform: scale(' . $f . '); }')) $miss[] = $sz . $ph . '=' . $f;
+        }
+        self::t(!$miss, 'Telefon: Pill skaliert mit dem Verhältnis der Schriftgrößen', implode(' ', $miss));
+
+        // Töne der Akzentfarbe: Nachbarn verschieden (16 Länder), Kontrast, CSS wie PHP
+        $de = Bases::units('de', 'laender', []);
+        $owner = $regions = [];
+        foreach (array_keys($de['units']) as $uid) { $owner[$uid] = 'l' . $uid; $regions[] = ['key' => 'l' . $uid, 'color' => '']; }
+        $nb = Render::neighbors($owner, $de['units']);
+        $eff = Colors::assign($regions, $nb, 'accent');
+        $clash = [];
+        foreach ($nb as $k => $list) foreach ($list as $x) if ($eff[$k] === $eff[$x] && $k < $x) $clash[] = "$k/$x";
+        self::t(!$clash && !array_diff($eff, array_keys(Colors::TONES)), '16 Länder in Tönen der Akzentfarbe: keine zwei Nachbarn gleich', implode(' ', $clash));
+        $bad = [];
+        $kits = [[Preview::kit(false), 'Website hell'], [Preview::kit(true), 'Website dunkel']];
+        foreach (['#2f6f8f', '#c0392b', '#f0c000', '#6a1b9a', '#7cc4e4'] as $a) {
+            $kits[] = [['accent' => $a, 'bg' => '#ffffff', 'ink' => '#1b1f24'], "$a hell"];
+            $kits[] = [['accent' => $a, 'bg' => '#16191d', 'ink' => '#eef1f4'], "$a dunkel"];
+        }
+        foreach ($kits as [$kit, $name]) foreach (array_keys(Colors::TONES) as $k) {
+            $c = Colors::approx($k, $kit);
+            if (max(\Core\Contrast::ratio($c, Labels::DARK), \Core\Contrast::ratio($c, Labels::LIGHT)) < Colors::MIN_LABEL) $bad[] = "$name $k $c";
+        }
+        self::t(!$bad, 'Töne: Beschriftung „automatisch“ erreicht immer ≥ 4,5:1 (angepasst, wo nötig)', implode(', ', $bad));
+        $miss = array_filter(array_keys(Colors::TONES), fn($k) => !str_contains($css, '.gk-c-' . $k . ' { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) ' . Colors::TONES[$k][1] . '%, var(--kit-' . Colors::TONES[$k][0] . ','));
+        self::t(!$miss, 'Stylesheet: Töne mit denselben Anteilen wie in PHP', implode(',', $miss));
+        $p = Render::paints([['key' => 'r1', 'color' => ''], ['key' => 'r2', 'color' => '']], [], 'accent');
+        self::t((bool) preg_match('~^gk-c-(a\d|own gk-x-)~', $p['r1']['class']) && $p['r1']['class'] !== $p['r2']['class'], 'Farben je Gebiet: Töne verschieden');
     }
 
     private static function entryAssign(): void

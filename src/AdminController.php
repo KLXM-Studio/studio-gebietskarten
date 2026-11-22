@@ -135,6 +135,26 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
             'preview' => $draft ? null : Render::html($m, ['preview' => true, 'assets' => false])]);
     }
 
+    /**
+     * Abschnitt „Darstellung“: JSON {"options": {hover, shadow, pill_shadow, palette, label_size, label_style, label_caps}, "draft": bool}.
+     * draft = nur Vorschau neu zeichnen (sofort beim Ändern), sonst speichern; Antwort mit Vorschau (die Karte der Beschriftungen
+     * zeichnet ihr Editor danach selbst neu – mit seinem eigenen Entwurf).
+     */
+    public function look(Request $r, string $id): Response
+    {
+        $m = $this->mapOr404($id);
+        $in = is_array($r->post['options'] ?? null) ? $r->post['options'] : [];
+        $draft = filter_var($r->post['draft'] ?? false, FILTER_VALIDATE_BOOL);
+        if ($draft) {
+            $m['options'] = Repo::look($m['options'], $in);
+        } else {
+            Repo::saveLook($m['id'], $in);
+            $m = (array) Repo::map($m['id']);
+        }
+        return Response::json(['ok' => true, 'message' => $draft ? '' : __('Darstellung gespeichert.'),
+            'preview' => Render::html($m, ['preview' => true, 'assets' => false]), 'options' => array_intersect_key($m['options'], array_flip(Repo::LOOK))]);
+    }
+
     /** „Automatisch neu setzen“: alle Beschriftungen an den Pol der Unzugänglichkeit (auch Bestandskarten), eigene Texte und Stile bleiben */
     public function labelsAuto(Request $r, string $id): Response
     {
@@ -158,8 +178,9 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         foreach (array_keys(Repo::OPTIONS) as $k) {
             if (is_bool(Repo::OPTIONS[$k])) $in['options'][$k] = !empty($in['options'][$k]);
         }
-        // Lage der Beschriftung (bisherige oder neue) ändert nur „Automatisch neu setzen“
+        // Lage der Beschriftung (bisherige oder neue) ändert nur „Automatisch neu setzen“, die Darstellung nur ihr Abschnitt
         $in['options']['label_mode'] = $m['options']['label_mode'];
+        foreach (Repo::LOOK as $k) $in['options'][$k] = $m['options'][$k];
         $in['scope'] = (array) ($in['scope'] ?? []);
         $in['binding'] = (array) ($in['binding'] ?? []) + $m['binding'];
         Repo::saveMap($m['id'], $in);
@@ -232,7 +253,7 @@ final class AdminController extends \Core\Http\Controllers\Admin\AdminController
         $regions = Repo::regions($m['id']);
         $kit = Preview::kit(false);
         $colors = [];
-        $effs = Colors::assign($regions, (array) (Render::geometry($m, $regions)['neighbors'] ?? []));
+        $effs = Colors::assign($regions, (array) (Render::geometry($m, $regions)['neighbors'] ?? []), (string) $m['options']['palette']);
         foreach ($regions as $reg) $colors[(string) $reg['id']] = Colors::approx($effs[$reg['key']], $kit);
         return Response::json(['ok' => true, 'order' => array_map(fn($x) => $x['id'], $regions), 'colors' => (object) $colors,
             'preview' => Render::html($m, ['preview' => true, 'assets' => false])]);

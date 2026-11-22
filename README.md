@@ -44,8 +44,9 @@ Einschalten je Website unter **Administration → Funktionen & Erweiterungen** o
 | Farben | Design-Farben des Kits, Palette (Okabe-Ito, erweitert; automatisch ohne Grau, Nachbarn verschieden) oder eigene Farbe – eigene Farben mit Wert **im Dunkeln** (eigenes Feld oder automatisch, Beschriftung ≥ 4,5:1). |
 | Block „Gebietskarte“ | Übersicht, ein Gebiet hervorheben, Gebiet dieser Seite oder Website; Klick öffnet den Link, ein Info-Fenster oder nichts. Liste der Gebiete als Alternative, Quellenvermerk unter jeder Karte. |
 | Beschriftungen | Je Gebiet an/aus, eigener Text (Kurzname, Zeilenumbruch), Lage per Ziehen oder Pfeiltasten (Umschalt = große Schritte), „Lage zurücksetzen“, Hinweislinie mit eigenem Ankerpunkt für kleine Gebiete. Je Karte (und je Gebiet abweichend): Schriftgröße S/M/L oder automatisch nach Fläche, Stil automatisch hell/dunkel nach Gebietsfarbe, Schrift des Kits, dunkel, hell oder Etikett, Großbuchstaben. Kontrast hell/dunkel mit Warnung im Editor. Automatische Lage: Pol der Unzugänglichkeit (Mitte der größten freien Fläche). Bei Datentabellen Lage in der Karte, Text optional in einem Feld der Einträge. |
+| Darstellung | Je Karte im Editor (Vorschau zeigt jede Änderung sofort, auch den Hover-Effekt): **Hover/Fokus** keiner, dezent (übrige Gebiete abdunkeln) oder animiert (Gebiet hebt sich weich federnd mit Schatten hervor, Name geht mit; Tastatur wie Maus, auf Touch kein Hover, bei „Bewegung reduzieren“ nur Schatten), **Schatten unter der Karte**, Beschriftungsstil **Pill hell/dunkel** (abgerundetes Etikett, auch je Gebiet) mit **Schatten der Pills**, automatische Farben als **Töne der Akzentfarbe** (Nachbarn verschieden, Kontrast der Namen ≥ 4,5:1). Kits liefern nur Standardwerte über `--gk-*`. |
 | Barrierefreiheit | Jedes Gebiet ein Link bzw. Sprungziel mit Namen, sichtbarer Fokus, Liste für Screenreader und ohne JavaScript, Namen in der Karte als echter SVG-Text mit Kontrast-Rand (die zugänglichen Namen tragen die Gebiete). |
-| CSP | Keine `style`-Attribute, keine Inline-Skripte: Farben als Klassen (Kit-Vertrag `--kit-*`) bzw. SVG-Attribut `fill`, Dunkel-Werte eigener Farben als erzeugte Datei im Medienordner; Skript (unter 2 KB) nur beim Info-Fenster. |
+| CSP | Keine `style`-Attribute, keine Inline-Skripte: Farben als Klassen (Kit-Vertrag `--kit-*`) bzw. SVG-Attribut `fill`, Dunkel-Werte eigener Farben als erzeugte Datei im Medienordner; Skript (unter 4 KB) nur beim Info-Fenster oder Hover „animiert“ (Bewegung per Klassen, Drehpunkt per CSSOM). |
 | Grafik | „Als Grafik weiterbearbeiten“: Karte als SVG in die Mediathek und – wenn das Paket `grafik` aktiv ist – gleich in den Grafik-Editor. |
 
 **Beschriftungen auf dem Telefon:** Ist die Karte schmaler als 36rem (rund 576 px), wird die Schrift im Kartenmaß 1,6-fach (S/M/L 22/29/37 statt
@@ -96,7 +97,12 @@ shapes by clicking writes the entries' field with the core's permissions, revisi
 or keyboard; custom colors get a dark-mode value (own or derived with a 4.5:1 label contrast). Labels (since 0.3.0) can be set per area in the
 map editor: on/off, custom text (short name, line breaks), position by dragging or arrow keys, an optional leader line with its own anchor for small
 areas, font size (S/M/L or automatic by area), style (automatic light/dark by area color with contrast check, kit text, dark, light, tag) and capitals.
-Automatic placement uses the pole of inaccessibility; maps created before 0.3.0 keep their label positions until “Place automatically again”. On narrow
+Automatic placement uses the pole of inaccessibility; maps created before 0.3.0 keep their label positions until “Place automatically again”.
+Since 0.4.0 editors set the appearance per map, with a live preview including hover: a hover/focus effect (none, subtle – other areas dim – or animated –
+the area lifts out with a soft spring and a growing shadow, its label moves along; keyboard focus like hover, no hover on touch, only a static shadow with
+reduced motion), a shadow under the map, pill labels (light: kit surface and text with a fine border; dark: dark accent with light text; per map or area,
+optional pill shadow) and “shades of the accent color” for automatic colors (neighbors differ, labels keep 4.5:1). Kits only provide defaults via `--gk-*`;
+existing maps stay unchanged. On narrow
 maps (below 36rem) labels get larger and are hidden where they do not fit; the names stay accessible on the areas and in the list. Map data:
 © BKG (2026) dl-de/by-2-0 (Data licence Germany – attribution – version 2.0), simplified; the attribution is added below every map
 automatically. Municipalities are downloaded per state on demand (`php bin/console gebietskarten:daten`). MIT licensed.

@@ -1,7 +1,8 @@
 <?php
 /**
  * Karte bearbeiten: Gebiete bilden (Klick auf die Karte, Liste mit Suche – eigene Gebiete oder Einträge einer Datentabelle),
- * Reihenfolge (Ziehen, Auf/Ab, Alt+Pfeil), Angaben je Gebiet, Einstellungen, Vorschau hell/dunkel.
+ * Reihenfolge (Ziehen, Auf/Ab, Alt+Pfeil), Angaben je Gebiet, Beschriftungen, Darstellung mit Vorschau hell/dunkel (Hover,
+ * Schatten, automatische Farben, Stil der Beschriftungen – seit 0.4.0), Einstellungen.
  * @var array $map  @var list<array> $regions  @var array $geo  @var ?array $table  @var int $editRegion  @var array $tables
  * @var string $preview  @var array $kitLight  @var array $kitDark  @var bool $darkOn  @var ?string $assignReason
  * @var array<int, string> $locked  @var array $flash
@@ -22,7 +23,7 @@ $editable = $own || ($table && $assignReason === null);
 $noun = Bases::unitNoun($map['base'], $map['level']);
 $nouns = Bases::unitNoun($map['base'], $map['level'], true);
 $adm = G::ADMIN . '/' . $map['id'];
-$effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
+$effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []), (string) $map['options']['palette']);
 $color = fn(array $r): string => Colors::approx($effs[(string) $r['key']], $kitLight);
 $byKey = array_column($regions, null, 'key');
 $free = array_values(array_filter($regions, fn($r) => !isset($locked[(int) $r['id']])));
@@ -209,7 +210,7 @@ $labelData = [
         'tight' => __('Passt nicht ganz in das Gebiet – Kurzname, Zeilenumbruch, kleinere Schrift oder Hinweislinie.'),
         'phone' => __('Auf schmalen Bildschirmen ausgeblendet (zu wenig Platz).'), 'phoneLeader' => __('Mit Hinweislinie: auf schmalen Bildschirmen ausgeblendet.'),
         'off' => __('Diese Beschriftung ist ausgeblendet.'), 'size' => __('Größe: {size}'), 'tone' => __('Schrift: {tone}'),
-        'toneD' => __('dunkel'), 'toneL' => __('hell'), 'toneKit' => __('Schrift des Kits'), 'toneTag' => __('Etikett'),
+        'toneD' => __('dunkel'), 'toneL' => __('hell'), 'toneKit' => __('Schrift des Kits'), 'toneTag' => __('Etikett'), 'tonePillL' => __('Pill hell'), 'tonePillD' => __('Pill dunkel'),
         'moved' => __('„{name}“ verschoben'), 'saved' => __('Beschriftungen gespeichert.'), 'error' => __('Speichern fehlgeschlagen.'),
         'unsaved' => __('Nicht gespeicherte Änderungen'), 'saving' => __('Wird gespeichert …'), 'leave' => __('Änderungen verwerfen?'),
         'textLocked' => __('Text aus dem Eintrag – hier nicht änderbar: {reason}'), 'noArea' => __('Gebiet ohne Flächen – keine Beschriftung.')],
@@ -263,20 +264,53 @@ $labelData = [
 </section>
 <script type="application/json" id="gk-lab-data"><?= json_encode($labelData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 
-<section class="adm-card gk-prev-card">
+<?php
+// Darstellung: Hover/Fokus, Schatten, automatische Farben, Beschriftungen (Größe, Stil, Großbuchstaben, Schatten der Pills) – jede
+// Änderung zeichnet die Vorschau sofort neu (Entwurf), auch Hover; gespeichert mit „Darstellung speichern“
+$o = $map['options'];
+$lookData = ['save' => url($adm . '/darstellung'),
+    't' => ['saved' => __('Darstellung gespeichert.'), 'error' => __('Speichern fehlgeschlagen.'), 'unsaved' => __('Nicht gespeicherte Änderungen'),
+        'saving' => __('Wird gespeichert …'), 'leave' => __('Änderungen verwerfen?')]];
+?>
+<section class="adm-card gk-prev-card" id="gk-darstellung" aria-labelledby="gk-look-h">
   <div class="gk-prev-head">
-    <h2><?= e(__('Vorschau')) ?></h2>
+    <h2 id="gk-look-h"><?= e(__('Darstellung')) ?></h2>
     <div class="gk-prev-switch" role="group" aria-label="<?= e(__('Farbschema der Vorschau')) ?>">
       <button type="button" class="adm-btn adm-btn--small adm-btn--primary" data-gk-scheme="light" aria-pressed="true"><?= e(__('Hell')) ?></button>
       <button type="button" class="adm-btn adm-btn--small" data-gk-scheme="dark" aria-pressed="false"><?= e(__('Dunkel')) ?></button>
     </div>
   </div>
   <p class="adm-muted"><?= e(($kitLight['source'] ?? '') === 'kit'
-      ? __('So erscheint die Karte im Block „Gebietskarte“ – mit den Farben des Kits und den Design-Werten dieser Website.')
-      : __('So erscheint die Karte im Block „Gebietskarte“ – mit den Grundfarben des Kits dieser Website.')) ?>
+      ? __('So erscheint die Karte im Block „Gebietskarte“ – mit den Farben des Kits und den Design-Werten dieser Website. Fahren Sie mit der Maus über die Karte, um den Hover-Effekt zu sehen.')
+      : __('So erscheint die Karte im Block „Gebietskarte“ – mit den Grundfarben des Kits dieser Website. Fahren Sie mit der Maus über die Karte, um den Hover-Effekt zu sehen.')) ?>
     <?php if (!$darkOn): ?><span data-gk-darknote hidden><?= e(__('Der Dunkelmodus ist für diese Website aus (Design) – Besucher sehen die Karte immer hell.')) ?></span><?php endif; ?></p>
-  <div class="gk-prevbox" data-gk-preview data-light="<?= e(Preview::vars($kitLight)) ?>" data-dark="<?= e(Preview::vars($kitDark)) ?>" style="<?= e(Preview::vars($kitLight)) ?>"><?= $preview ?></div>
+  <div class="gk-look">
+    <div class="gk-prevbox" data-gk-preview data-light="<?= e(Preview::vars($kitLight)) ?>" data-dark="<?= e(Preview::vars($kitDark)) ?>" style="<?= e(Preview::vars($kitLight)) ?>"><?= $preview ?></div>
+    <div class="gk-look__panel" data-gk-look>
+      <div class="f"><label for="gk-hover"><?= e(__('Hover- und Fokus-Effekt')) ?></label>
+        <select id="gk-hover" data-gk-look-f="hover" aria-describedby="gk-hover-h"><?php foreach (['none' => __('keiner'), 'subtle' => __('dezent – übrige Gebiete abdunkeln'), 'lift' => __('animiert – Gebiet hebt sich hervor')] as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $o['hover'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select>
+        <p class="f-help" id="gk-hover-h"><?= e(__('Gilt für Maus und Tastatur. Auf Touch-Geräten bleibt es beim Antippen; bei „Bewegung reduzieren“ zeigt „animiert“ nur einen ruhigen Schatten.')) ?></p></div>
+      <label class="gk-lab-check"><input type="checkbox" data-gk-look-f="shadow"<?= $o['shadow'] ? ' checked' : '' ?>> <?= e(__('Schatten unter der Karte')) ?></label>
+      <div class="f"><label for="gk-palette"><?= e(__('Automatische Farben')) ?></label>
+        <select id="gk-palette" data-gk-look-f="palette" aria-describedby="gk-palette-h"><?php foreach (Colors::presetOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $o['palette'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select>
+        <p class="f-help" id="gk-palette-h"><?= e(__('Für Gebiete mit Farbe „Automatisch“ (z. B. Datentabellen ohne Farbfeld). Nachbargebiete bekommen immer verschiedene Farben bzw. Töne.')) ?></p></div>
+      <fieldset class="gk-look__labels"><legend><?= e(__('Beschriftungen')) ?></legend>
+        <div class="f"><label for="gk-ls"><?= e(__('Schriftgröße')) ?></label>
+          <select id="gk-ls" data-gk-look-f="label_size"><?php foreach (Labels::sizeOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $o['label_size'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+        <div class="f"><label for="gk-lst"><?= e(__('Stil')) ?></label>
+          <select id="gk-lst" data-gk-look-f="label_style" aria-describedby="gk-lst-h"><?php foreach (Labels::styleOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $o['label_style'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select>
+          <p class="f-help" id="gk-lst-h"><?= e(__('Je Gebiet abweichend im Abschnitt „Beschriftungen“.')) ?></p></div>
+        <label class="gk-lab-check"><input type="checkbox" data-gk-look-f="label_caps"<?= $o['label_caps'] ? ' checked' : '' ?>> <?= e(__('Großbuchstaben')) ?></label>
+        <label class="gk-lab-check"><input type="checkbox" data-gk-look-f="pill_shadow"<?= $o['pill_shadow'] ? ' checked' : '' ?>> <?= e(__('Schatten unter Pill-Beschriftungen')) ?></label>
+      </fieldset>
+      <div class="gk-lab-save">
+        <button type="button" class="adm-btn adm-btn--primary" data-gk-look-save disabled><?= e(__('Darstellung speichern')) ?></button>
+        <span class="gk-ed__status" data-gk-look-status role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </div>
 </section>
+<script type="application/json" id="gk-look-data"><?= json_encode($lookData, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 
 <section class="adm-card">
   <h2><?= e(__('Einstellungen der Karte')) ?></h2>
@@ -291,18 +325,11 @@ $labelData = [
       <p class="f-help"><?= e(__('Keine Auswahl = ganz Deutschland.')) ?></p>
       <div class="gk-adm-checks"><?php foreach ($base['parts'] as $sn => $name): ?><label><input type="checkbox" name="m[scope][]" value="<?= e($sn) ?>"<?= in_array($sn, $map['scope'], true) ? ' checked' : '' ?>> <?= e($name) ?></label><?php endforeach; ?></div>
     </fieldset>
-    <fieldset class="f"><legend><?= e(__('Darstellung')) ?></legend>
+    <fieldset class="f"><legend><?= e(__('Inhalt der Karte')) ?></legend>
       <label><input type="checkbox" name="m[options][rest]" value="1"<?= $map['options']['rest'] ? ' checked' : '' ?>> <?= e(__('Flächen ohne Gebiet zeigen (grau)')) ?></label><br>
       <label><input type="checkbox" name="m[options][lines]" value="1"<?= $map['options']['lines'] ? ' checked' : '' ?>> <?= e(__('Grenzen der {nouns} innerhalb der Gebiete zeigen', ['nouns' => $nouns])) ?></label><br>
-      <label><input type="checkbox" name="m[options][labels]" value="1"<?= $map['options']['labels'] ? ' checked' : '' ?>> <?= e(__('Namen der Gebiete in der Karte (je Gebiet abweichend unter „Beschriftungen“)')) ?></label><br>
+      <label><input type="checkbox" name="m[options][labels]" value="1"<?= $map['options']['labels'] ? ' checked' : '' ?>> <?= e(__('Namen der Gebiete in der Karte (Gestaltung unter „Darstellung“, je Gebiet abweichend unter „Beschriftungen“)')) ?></label><br>
       <label><input type="checkbox" name="m[options][list]" value="1"<?= $map['options']['list'] ? ' checked' : '' ?>> <?= e(__('Liste der Gebiete unter der Karte (sonst nur für Screenreader)')) ?></label>
-    </fieldset>
-    <fieldset class="f gk-adm-labels"><legend><?= e(__('Beschriftungen')) ?></legend>
-      <div class="f"><label for="gk-ls"><?= e(__('Schriftgröße')) ?></label>
-        <select id="gk-ls" name="m[options][label_size]"><?php foreach (Labels::sizeOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $map['options']['label_size'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-      <div class="f"><label for="gk-lst"><?= e(__('Stil')) ?></label>
-        <select id="gk-lst" name="m[options][label_style]"><?php foreach (Labels::styleOptions() as $k => $l): ?><option value="<?= e($k) ?>"<?= $k === $map['options']['label_style'] ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-      <label class="gk-lab-check"><input type="checkbox" name="m[options][label_caps]" value="1"<?= $map['options']['label_caps'] ? ' checked' : '' ?>> <?= e(__('Großbuchstaben')) ?></label>
     </fieldset>
     <div class="f"><label for="gk-fit"><?= e(__('Ausschnitt')) ?></label>
       <select id="gk-fit" name="m[options][fit]"><option value="scope"<?= $map['options']['fit'] === 'scope' ? ' selected' : '' ?>><?= e(__('alle Flächen der gewählten Länder')) ?></option><option value="regions"<?= $map['options']['fit'] === 'regions' ? ' selected' : '' ?>><?= e(__('nur bis zum Rand der Gebiete')) ?></option></select></div>

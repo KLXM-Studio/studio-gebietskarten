@@ -30,7 +30,8 @@ final class Render
      * @return array{w: int, h: int, regions: array<string, string>, rest: string, units: array<string, string>, lines: string,
      *               labels: array<string, array{0: float, 1: float}>, poles: array<string, array{0: float, 1: float, 2: float}>,
      *               proj: ?array, owner: array<string, string>, unitsOf: array<string, list<string>>,
-     *               unmatched: array<string, list<string>>, missing: list<string>, names: array<string, string>, empty: bool}
+     *               unmatched: array<string, list<string>>, missing: list<string>, names: array<string, string>, empty: bool,
+     *               neighbors: array<string, list<string>>}
      */
     public static function geometry(array $map, array $regions, bool $editor = false): array
     {
@@ -240,6 +241,11 @@ final class Render
         $noun = Bases::unitNoun($map['base'], $map['level'], false);
         $nouns = Bases::unitNoun($map['base'], $map['level'], true);
         $showList = !$labelEdit && (array_key_exists('list', $o) && $o['list'] !== null ? (bool) $o['list'] : (bool) $map['options']['list']);
+        // Darstellung (seit 0.4.0): Hover-Effekt, Schatten, Farb-Preset – Standard wie bisher (keine zusätzliche Auszeichnung)
+        $look = $map['options'];
+        $hover = $labelEdit ? 'none' : (string) ($look['hover'] ?? 'none');
+        $lift = $hover === 'lift';
+        $preset = (string) ($look['palette'] ?? 'default');
 
         $svg = '<svg class="gk-svg" viewBox="0 0 ' . $geo['w'] . ' ' . $geo['h'] . '" role="group" aria-labelledby="' . $id . '-t" focusable="false" xmlns="http://www.w3.org/2000/svg"'
             . ($labelEdit && $geo['proj'] ? ' data-gk-proj="' . e(implode(',', $geo['proj'])) . '"' : '') . '>'
@@ -248,7 +254,7 @@ final class Render
         $svg .= '<g class="gk-areas">';
         $order = $regions;
         usort($order, fn($a, $b) => ($a['key'] === $active) <=> ($b['key'] === $active));   // hervorgehobenes Gebiet zuletzt (Rand oben)
-        $paints = self::paints($regions, (array) ($geo['neighbors'] ?? []));
+        $paints = self::paints($regions, (array) ($geo['neighbors'] ?? []), $preset);
         $pairs = $palDark = [];
         foreach ($paints as $pt) {
             if (!$pt['dark']) continue;
@@ -262,26 +268,28 @@ final class Render
             if ($d === '') continue;
             $paint = $paints[$r['key']];
             $cls = 'gk-area ' . $paint['class'] . ($r['key'] === $active ? ' is-active' : '');
+            // Hover „animiert“: Schlüssel und Pol (Mitte der Bewegung) für das Skript
+            $px = $lift && isset($geo['poles'][$r['key']]) ? ' data-gk-k="' . e($r['key']) . '" data-gk-pole="' . e($geo['poles'][$r['key']][0] . ' ' . $geo['poles'][$r['key']][1]) . '"' : '';
             $path = '<path d="' . $d . '" fill-rule="evenodd"' . ($paint['fill'] ? ' fill="' . e($paint['fill']) . '"' : '') . '/>';
             $name = (string) $r['name'];
             $href = $action === 'link' && $r['link'] !== '' ? link_href($r['link']) : '';
             if ($href !== '' && $href !== '#') {
-                $svg .= '<a class="' . $cls . '" href="' . e($href) . '" aria-label="' . e($name) . '"' . ($r['key'] === $active ? ' aria-current="true"' : '') . ext_attrs($r['link']) . $pv($paint) . '>'
+                $svg .= '<a class="' . $cls . '"' . $px . ' href="' . e($href) . '" aria-label="' . e($name) . '"' . ($r['key'] === $active ? ' aria-current="true"' : '') . ext_attrs($r['link']) . $pv($paint) . '>'
                     . '<title>' . e($name) . '</title>' . $path . '</a>';
             } elseif ($action === 'info') {
-                $svg .= '<a class="' . $cls . '" href="#' . $id . '-' . e($r['key']) . '" aria-label="' . e(lt('{name}: Informationen', ['name' => $name])) . '" data-gk-info="' . e($r['key']) . '" aria-haspopup="dialog"' . $pv($paint) . '>'
+                $svg .= '<a class="' . $cls . '"' . $px . ' href="#' . $id . '-' . e($r['key']) . '" aria-label="' . e(lt('{name}: Informationen', ['name' => $name])) . '" data-gk-info="' . e($r['key']) . '" aria-haspopup="dialog"' . $pv($paint) . '>'
                     . '<title>' . e($name) . '</title>' . $path . '</a>';
             } else {
-                $svg .= '<g class="' . $cls . '"' . $pv($paint) . ($labelEdit ? ' data-gk-key="' . e($r['key']) . '"' : '') . '><title>' . e($name) . '</title>' . $path . '</g>';
+                $svg .= '<g class="' . $cls . '"' . $px . $pv($paint) . ($labelEdit ? ' data-gk-key="' . e($r['key']) . '"' : '') . '><title>' . e($name) . '</title>' . $path . '</g>';
             }
         }
         $svg .= '</g>';
         if ($map['options']['lines'] && $geo['lines'] !== '') $svg .= '<path class="gk-lines" d="' . $geo['lines'] . '" aria-hidden="true"/>';
         // Beschriftungen (Labels): je Gebiet an/aus, Text, Lage, Größe, Stil; Bestandskarten wie bisher
-        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
+        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []), $preset);
         $layout = Labels::layout($map, $regions, $geo, $effs, $labelEdit, $labelEdit);
         $pole = ($map['options']['label_mode'] ?? 'legacy') === 'pole';
-        $svg .= Labels::svg($layout, $id, $pole, $active, $labelEdit);
+        $svg .= Labels::svg($layout, $id, $pole, $active, $labelEdit, $lift);
         $svg .= '</svg>';
         $darkTones = Labels::needsDarkTones($layout);
 
@@ -310,8 +318,11 @@ final class Render
         $pop = $action === 'info' ? '<div class="gk-pop" role="dialog" aria-modal="false" hidden data-gk-pop><button type="button" class="gk-pop__close" data-gk-close aria-label="' . e(lt('Schließen')) . '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13"/></svg></button><div class="gk-pop__body" data-gk-body></div></div>' : '';
 
         $help = $labelEdit ? '<p class="adm-sr" id="' . $id . '-labhelp">' . e(__('Ziehen oder Pfeiltasten verschieben die Beschriftung, Umschalt+Pfeil in großen Schritten.')) . '</p>' : '';
-        return (($o['assets'] ?? true) ? self::assets($action === 'info') . Colors::sheet($pairs, $palDark, $darkTones) : '')
-            . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . ($pole ? ' gk--lab2' : '') . ($labelEdit ? ' gk--labedit' : '') . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
+        $shadow = !$labelEdit && !empty($look['shadow']);
+        $pillShadow = !empty($look['pill_shadow']);
+        $fx = ($hover !== 'none' ? ' gk--hover-' . $hover : '') . ($shadow ? ' gk--shadow' : '') . ($pillShadow ? ' gk--pillshadow' : '');
+        return (($o['assets'] ?? true) ? self::assets($action === 'info' || $lift) . Colors::sheet($pairs, $palDark, $darkTones, $shadow || $pillShadow || $lift) : '')
+            . '<figure class="gk gk--' . e($map['level']) . ($active ? ' gk--focus' : '') . ($preview ? ' gk--preview' : '') . ($pole ? ' gk--lab2' : '') . ($labelEdit ? ' gk--labedit' : '') . $fx . '" id="' . $id . '" data-gk-action="' . e($action) . '">'
             . $empty . $help . '<div class="gk-map">' . $svg . $pop . '</div>'
             . '<figcaption class="gk-cap">' . $cap . '</figcaption></figure>';
     }
@@ -369,11 +380,11 @@ final class Render
      * @param array<string, list<string>> $neighbors
      * @return array<string, array{class: string, fill: ?string, dark: ?string}>
      */
-    public static function paints(array $regions, array $neighbors = []): array
+    public static function paints(array $regions, array $neighbors = [], string $preset = 'default'): array
     {
         $out = [];
-        $kitDark = null;
-        $effs = Colors::assign($regions, $neighbors);
+        $kitDark = $kitLight = null;
+        $effs = Colors::assign($regions, $neighbors, $preset);
         foreach ($regions as $r) {
             $eff = $effs[(string) $r['key']];
             $dark = '';
@@ -382,6 +393,15 @@ final class Render
                 $dark = $own !== '' ? $own : Colors::dark($eff, $kitDark ??= Preview::kit(true));
             } elseif (isset(Colors::PALETTE[$eff]) && Colors::darkRule()) {
                 $dark = Colors::paletteDark($eff, $kitDark ??= Preview::kit(true));
+            } elseif (isset(Colors::TONES[$eff])) {
+                // Töne der Akzentfarbe: Klasse (CSS mischt mit den Kit-Farben); angepasst für den Kontrast → feste Farben wie eigene
+                $kitLight ??= Preview::kit(false);
+                $kitDark ??= Preview::kit(true);
+                [$l, $d] = [Colors::tone($eff, $kitLight), Colors::tone($eff, $kitDark)];
+                if ($l !== Colors::toneRaw($eff, $kitLight) || $d !== Colors::toneRaw($eff, $kitDark)) {
+                    $out[$r['key']] = Colors::paint($l, Colors::darkRule() ? $d : '');
+                    continue;
+                }
             }
             $out[$r['key']] = Colors::paint($eff, $dark);
         }
@@ -394,7 +414,7 @@ final class Render
         return '';
     }
 
-    /** Stylesheet einmal je Seite, Skript nur mit Info-Fenster (Besucher laden sonst nichts) */
+    /** Stylesheet einmal je Seite, Skript nur mit Info-Fenster oder Hover-Effekt „animiert“ (Besucher laden sonst nichts) */
     public static function assets(bool $js): string
     {
         $out = '';
@@ -427,7 +447,7 @@ final class Render
         $kit += ['accent' => '#2f6f8f', 'bg' => '#ffffff', 'ink' => '#1b1f24', 'surface' => '#eef1f4', 'line' => '#d0d6dd', 'muted' => '#5b6470'];
         $regions = Bound::regionsOf($map);
         $geo = self::geometry($map, $regions);
-        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []));
+        $effs = Colors::assign($regions, (array) ($geo['neighbors'] ?? []), (string) ($map['options']['palette'] ?? 'default'));
         $h = $geo['h'] + 50;
         $x = fn(string $s): string => htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
         $s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $geo['w'] . ' ' . $h . '" width="' . $geo['w'] . '" height="' . $h . '">'

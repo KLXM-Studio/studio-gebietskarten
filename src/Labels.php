@@ -24,6 +24,12 @@ use Core\Contrast;
  * L 37 statt 14/18/23) – sonst wäre sie auf dem Telefon kaum 7 px groß. Passt die Beschriftung so nicht ganz in ihr Gebiet,
  * nimmt sie die nächstkleinere Größe (Klasse gk-lp-m/-s); passt auch S nicht (und bei Hinweislinien immer), entfällt sie dort
  * (Klasse gk-lh). Die Namen bleiben über die Links der Gebiete und die Liste zugänglich.
+ *
+ * Pill (seit 0.4.0, Stil pill-light / pill-dark): abgerundetes Etikett – <rect rx> hinter dem Text, Maße aus box() plus
+ * Innenabstand (PILL_PAD), einzeilig rx = Höhe/2, mehrzeilig rx ≈ 0,6 em; Farben über Klassen und --gk-pill-* (Kit-Fläche,
+ * Kit-Schrift, feiner Rand bzw. dunkler Akzent mit heller Schrift). Rechteck und Text stehen in einer Gruppe (gk-pill) – auf
+ * dem Telefon skaliert die Gruppe um ihre Mitte (Klasse gk-pz-{größe}{telefon}), beim Hover-Effekt „animiert“ hebt sie sich
+ * mit dem Gebiet (Hülle gk-lk mit data-gk-k).
  */
 final class Labels
 {
@@ -37,7 +43,11 @@ final class Labels
     /** Schriftfarben der Stile „dunkel“ und „hell“ (CSS: --gk-lab-dark, --gk-lab-light) */
     public const DARK = '#16191d';
     public const LIGHT = '#ffffff';
-    public const STYLES = ['auto', 'kit', 'dark', 'light', 'tag'];
+    public const STYLES = ['auto', 'kit', 'dark', 'light', 'tag', 'pill-light', 'pill-dark'];
+    /** Innenabstand der Pill in em [waagerecht, senkrecht] */
+    public const PILL_PAD = [0.55, 0.32];
+    /** Hintergrund „Pill dunkel“: Akzent mit Schwarz gemischt (Anteil Akzent in Prozent; CSS --gk-pill-dark-bg) */
+    public const PILL_DARK = 45;
     public const SIZE_KEYS = ['auto', 's', 'm', 'l'];
     /** Versatz des Textes zum Ankerpunkt bei neuer Hinweislinie */
     private const LEADER = [64.0, -44.0];
@@ -47,7 +57,8 @@ final class Labels
     {
         return ($inherit ? ['' => __('wie Karte')] : []) + [
             'auto' => __('Automatisch hell oder dunkel (nach Gebietsfarbe)'), 'kit' => __('Schrift des Kits mit Kontrastrand'),
-            'dark' => __('Dunkel mit hellem Rand'), 'light' => __('Hell mit dunklem Rand'), 'tag' => __('Etikett mit Hintergrund')];
+            'dark' => __('Dunkel mit hellem Rand'), 'light' => __('Hell mit dunklem Rand'), 'tag' => __('Etikett mit Hintergrund'),
+            'pill-light' => __('Pill hell (abgerundet, Fläche des Kits)'), 'pill-dark' => __('Pill dunkel (abgerundet, Akzent dunkel)')];
     }
 
     /** @return array<string, string> */
@@ -301,6 +312,31 @@ final class Labels
         return true;
     }
 
+    /** Ist der Stil eine Pill? */
+    public static function isPill(string $style): bool
+    {
+        return $style === 'pill-light' || $style === 'pill-dark';
+    }
+
+    /** Maße der Pill (Text plus Innenabstand) @return array{0: float, 1: float} */
+    public static function pillBox(array $lines, float $fs, bool $caps): array
+    {
+        [$w, $h] = self::box($lines, $fs, $caps);
+        return [round($w + 2 * self::PILL_PAD[0] * $fs, 1), round($h + 2 * self::PILL_PAD[1] * $fs, 1)];
+    }
+
+    /** Eckenradius der Pill: einzeilig halbe Höhe, mehrzeilig 0,6 em */
+    public static function pillRadius(int $lines, float $fs, float $h): float
+    {
+        return round($lines > 1 ? 0.6 * $fs : $h / 2, 1);
+    }
+
+    /** Hintergrund „Pill dunkel“ zur Akzentfarbe (wie --gk-pill-dark-bg) */
+    public static function pillDark(array $kit): string
+    {
+        return strtolower(Contrast::mix(Colors::hex((string) ($kit['accent'] ?? '')) ?: '#2f6f8f', '#000000', self::PILL_DARK));
+    }
+
     /** Geschätzte Maße des Textes (ohne Messen im Browser – Website ohne Skript) @return array{0: float, 1: float} */
     public static function box(array $lines, float $fs, bool $caps): array
     {
@@ -371,6 +407,10 @@ final class Labels
             $lines = self::lines(self::text($r, $s));
             if (!$lines) continue;
             $caps = isset($s['caps']) ? $s['caps'] === 'on' : $def['caps'];
+            $style = (string) ($s['style'] ?? $def['style']);
+            if (!in_array($style, self::STYLES, true)) $style = 'kit';
+            $pill = self::isPill($style);
+            $dims = static fn(float $fs): array => $pill ? self::pillBox($lines, $fs, $caps) : self::box($lines, $fs, $caps);
             $leader = !empty($s['leader']);
             $segs = null;
             $anchor = null;
@@ -391,22 +431,22 @@ final class Labels
                 $fits = $leader;
                 if (!$leader) {
                     foreach (['l', 'm', 's'] as $sk) {
-                        [$bw, $bh] = self::box($lines, self::SIZES[$sk], $caps);
+                        [$bw, $bh] = $dims(self::SIZES[$sk]);
                         if (self::boxInside($segs, $pos[0], $pos[1], $bw, $bh)) { $sizeKey = $sk; $fits = true; break; }
                     }
                 }
             } elseif (!$leader) {
-                [$bw, $bh] = self::box($lines, self::SIZES[$sizeKey] ?? 18, $caps);
+                [$bw, $bh] = $dims(self::SIZES[$sizeKey] ?? 18);
                 $fits = self::boxInside($segs, $pos[0], $pos[1], $bw, $bh);
             }
             if (!isset(self::SIZES[$sizeKey])) $sizeKey = 'm';
             $fs = self::SIZES[$sizeKey];
-            [$bw, $bh] = self::box($lines, $fs, $caps);
+            [$bw, $bh] = $dims($fs);
             // Telefon: gleiche oder nächstkleinere Größe in Telefon-Schrift, die ganz ins Gebiet passt – sonst ausblenden
             $phone = null;
             if (!$leader && !$legacy) {
                 foreach (array_slice(['l', 'm', 's'], array_search($sizeKey, ['l', 'm', 's'], true) ?: 0) as $sk) {
-                    [$pw, $ph] = self::box($lines, self::PHONE[$sk], $caps);
+                    [$pw, $ph] = $dims(self::PHONE[$sk]);
                     if (self::boxInside($segs, $pos[0], $pos[1], $pw, $ph)) { $phone = $sk; break; }
                 }
             }
@@ -420,8 +460,6 @@ final class Labels
                 if ($t < 1) $end = [round($pos[0] + $dx * $t, 1), round($pos[1] + $dy * $t, 1)];
             }
 
-            $style = (string) ($s['style'] ?? $def['style']);
-            if (!in_array($style, self::STYLES, true)) $style = 'kit';
             $info = ['key' => $k, 'name' => (string) $r['name'], 'visible' => $visible, 'lines' => $lines, 'caps' => $caps, 'size' => $sizeKey, 'fs' => $fs,
                 'x' => $pos[0], 'y' => $pos[1], 'w' => $bw, 'h' => $bh, 'manual' => $manual, 'leader' => $leader,
                 'ax' => $anchor[0] ?? null, 'ay' => $anchor[1] ?? null, 'end' => $end, 'anchorManual' => $leader && isset($s['anchor']),
@@ -453,6 +491,8 @@ final class Labels
         $bg = Colors::hex((string) ($kit['bg'] ?? '')) ?: '#ffffff';
         return match ($style) {
             'tag' => ['tag', round(Contrast::ratio($bg, $ink), 2)],
+            'pill-light' => ['pl', round(Contrast::ratio(Colors::hex((string) ($kit['surface'] ?? '')) ?: $bg, $ink), 2)],
+            'pill-dark' => ['pd', round(Contrast::ratio(self::LIGHT, self::pillDark($kit)), 2)],
             'kit' => ['kit', round(Contrast::ratio($ink, $fill), 2)],
             'dark' => ['d', round(Contrast::ratio(self::DARK, $fill), 2)],
             'light' => ['l', round(Contrast::ratio(self::LIGHT, $fill), 2)],
@@ -477,8 +517,10 @@ final class Labels
      * Beschriftungen als SVG (Website bzw. Editor). Website: <g class="gk-labels" aria-hidden="true"> – die Namen stehen an den
      * Links der Gebiete und in der Liste. Editor ($edit): jede Beschriftung fokussierbar und verschiebbar, Ankerpunkte eigene
      * Griffe. Bestandskarten ohne eigene Angaben ergeben dieselbe Ausgabe wie vor 0.3.0.
+     * $lift (Hover-Effekt „animiert“, nur Website): jede Beschriftung samt Hinweislinie in einer Hülle
+     * <g class="gk-lk" data-gk-k="r12"> – das Skript hebt sie mit ihrem Gebiet an.
      */
-    public static function svg(array $layout, string $id, bool $pole, ?string $active, bool $edit = false): string
+    public static function svg(array $layout, string $id, bool $pole, ?string $active, bool $edit = false, bool $lift = false): string
     {
         if (!$layout) return '';
         $tag = false;
@@ -490,13 +532,19 @@ final class Labels
         foreach ($layout as $l) {
             $k = $l['key'];
             $hide = $pole && !$l['fitsPhone'] ? ' gk-lh' : '';
+            $pill = self::isPill($l['style']);
             $cls = [];
             if ($l['size'] !== 'm') $cls[] = 'gk-ls-' . $l['size'];
             if ($l['toneL'] === 'd' || $l['toneL'] === 'l') $cls[] = 'gk-tone-' . $l['toneL'];
             if ($l['toneL'] === 'tag') $cls[] = 'gk-tag';
             if ($l['style'] === 'auto' && $l['toneD'] !== $l['toneL']) $cls[] = 'gk-tdk-' . $l['toneD'];
             if ($l['caps']) $cls[] = 'gk-lc';
-            if ($hide !== '') $cls[] = 'gk-lh';
+            // Pill: Ausblenden und Telefon-Größe an der Gruppe (skaliert um ihre Mitte), nicht am Text
+            $pcls = [];
+            if ($pill) {
+                if ($hide !== '') $pcls[] = 'gk-lh';
+                elseif ($pole && $l['phone'] !== null) $pcls[] = 'gk-pz-' . $l['size'] . $l['phone'];
+            } elseif ($hide !== '') $cls[] = 'gk-lh';
             elseif ($pole && $l['phone'] !== null && $l['phone'] !== $l['size']) $cls[] = 'gk-lp-' . $l['phone'];
             if ($k === $active) $cls[] = 'is-active';
             $n = count($l['lines']);
@@ -511,13 +559,18 @@ final class Labels
                 }
             }
             $text .= '</text>';
+            if ($pill) {
+                $text = '<g class="gk-pill gk-pill-' . ($l['style'] === 'pill-dark' ? 'd' : 'l') . ($pcls ? ' ' . implode(' ', $pcls) : '') . '">'
+                    . '<rect class="gk-pill__bg" x="' . self::num($l['x'] - $l['w'] / 2) . '" y="' . self::num($l['y'] - $l['h'] / 2) . '" width="' . self::num($l['w']) . '" height="' . self::num($l['h']) . '"'
+                    . ' rx="' . self::num(self::pillRadius($n, $l['fs'], $l['h'])) . '"/>' . $text . '</g>';
+            }
             $lead = '';
             if ($l['leader'] && $l['ax'] !== null) {
                 if ($l['end']) $lead .= '<path class="gk-leader' . $hide . '" d="M' . self::num($l['ax']) . ' ' . self::num($l['ay']) . 'L' . self::num($l['end'][0]) . ' ' . self::num($l['end'][1]) . '"/>';
                 $lead .= '<circle class="gk-anchor' . $hide . '" cx="' . self::num($l['ax']) . '" cy="' . self::num($l['ay']) . '" r="3.5"/>';
             }
             if (!$edit) {
-                $s .= $lead . $text;
+                $s .= $lift ? '<g class="gk-lk" data-gk-k="' . e($k) . '">' . $lead . $text . '</g>' : $lead . $text;
                 continue;
             }
             $name = $l['name'];
@@ -557,16 +610,21 @@ final class Labels
                 'tag' => [$kit['bg'], 'none'],
                 default => [$kit['ink'], $kit['bg']],
             };
+            $pill = self::isPill((string) $l['style']);
+            if ($pill) $fill = $l['style'] === 'pill-dark' ? self::LIGHT : $kit['ink'];
             if ($l['leader'] && $l['ax'] !== null) {
                 if ($l['end']) $s .= '<path d="M' . self::num($l['ax']) . ' ' . self::num($l['ay']) . 'L' . self::num($l['end'][0]) . ' ' . self::num($l['end'][1]) . '" fill="none" stroke="' . $kit['ink'] . '" stroke-width="1.2"/>';
                 $s .= '<circle cx="' . self::num($l['ax']) . '" cy="' . self::num($l['ay']) . '" r="3.5" fill="' . $kit['ink'] . '" stroke="' . $kit['bg'] . '" stroke-width="1.5"/>';
             }
-            if ($l['toneL'] === 'tag') {
+            if ($pill) {
+                $s .= '<rect x="' . self::num($l['x'] - $l['w'] / 2) . '" y="' . self::num($l['y'] - $l['h'] / 2) . '" width="' . self::num($l['w']) . '" height="' . self::num($l['h']) . '" rx="' . self::num(self::pillRadius(count($l['lines']), $l['fs'], $l['h'])) . '"'
+                    . ($l['style'] === 'pill-dark' ? ' fill="' . self::pillDark($kit) . '"' : ' fill="' . (Colors::hex((string) ($kit['surface'] ?? '')) ?: $kit['bg']) . '" stroke="' . $kit['line'] . '" stroke-width="1"') . '/>';
+            } elseif ($l['toneL'] === 'tag') {
                 $s .= '<rect x="' . self::num($l['x'] - $l['w'] / 2 - 4) . '" y="' . self::num($l['y'] - $l['h'] / 2 - 3) . '" width="' . self::num($l['w'] + 8) . '" height="' . self::num($l['h'] + 6) . '" rx="3" fill="' . $kit['ink'] . '"/>';
             }
             $n = count($l['lines']);
             // Grundlinie wie auf der Website (dominant-baseline: central), ohne CSS: Versatz um ca. 0,35 em
-            $s .= '<text x="' . self::num($l['x']) . '" y="' . self::num($l['y']) . '" font-size="' . $l['fs'] . '" fill="' . $fill . '"' . ($stroke !== 'none' ? ' stroke="' . $stroke . '" stroke-width="3"' : '')
+            $s .= '<text x="' . self::num($l['x']) . '" y="' . self::num($l['y']) . '" font-size="' . $l['fs'] . '" fill="' . $fill . '"' . ($stroke !== 'none' && !$pill ? ' stroke="' . $stroke . '" stroke-width="3"' : '')
                 . ($l['caps'] ? ' letter-spacing="0.04em"' : '') . '>';
             foreach ($l['lines'] as $i => $line) {
                 $dy = ($i === 0 ? -($n - 1) / 2 * self::LINE + 0.35 : self::LINE);

@@ -30,15 +30,24 @@ final class Repo
         // seit 0.3.0 – Beschriftungen (Labels), je Gebiet abweichend in der Spalte labels
         'label_mode' => 'pole',   // Lage automatisch: pole (Pol der Unzugänglichkeit) | legacy (bisherige Lage, Bestandskarten)
         'label_size' => 'auto',   // auto (nach Fläche) | s | m | l
-        'label_style' => 'auto',  // auto (hell/dunkel nach Gebietsfarbe) | kit | dark | light | tag
+        'label_style' => 'auto',  // auto (hell/dunkel nach Gebietsfarbe) | kit | dark | light | tag | pill-light | pill-dark (0.4.0)
         'label_caps' => false,    // Großbuchstaben
+        // seit 0.4.0 – Darstellung (Abschnitt „Darstellung“ im Editor); Standard = wie bisher
+        'hover' => 'none',        // Hover/Fokus: none | subtle (übrige Gebiete abdunkeln) | lift (Gebiet hebt sich animiert hervor)
+        'shadow' => false,        // Schatten unter der Karte
+        'pill_shadow' => false,   // Schatten unter Pill-Beschriftungen
+        'palette' => 'default',   // automatische Farben: default (Palette Okabe-Ito) | accent (Töne der Akzentfarbe)
     ];
+
+    /** Optionen des Abschnitts „Darstellung“ (eigene Route, Vorschau als Entwurf) – das Formular „Einstellungen“ lässt sie unverändert */
+    public const LOOK = ['hover', 'shadow', 'pill_shadow', 'palette', 'label_size', 'label_style', 'label_caps'];
 
     /** Bestandskarten (vor 0.3.0, ohne label_mode): Beschriftung wie bisher – gleiche Lage, Größe M, Schrift des Kits */
     public const LEGACY = ['label_mode' => 'legacy', 'label_size' => 'm', 'label_style' => 'kit', 'label_caps' => false];
 
     /** Erlaubte Werte der Auswahl-Optionen */
-    public const ENUMS = ['fit' => ['scope', 'regions'], 'label_mode' => ['pole', 'legacy'], 'label_size' => Labels::SIZE_KEYS, 'label_style' => Labels::STYLES];
+    public const ENUMS = ['fit' => ['scope', 'regions'], 'label_mode' => ['pole', 'legacy'], 'label_size' => Labels::SIZE_KEYS, 'label_style' => Labels::STYLES,
+        'hover' => ['none', 'subtle', 'lift'], 'palette' => ['default', 'accent']];
 
     /** @return array<string, callable(Table): mixed> */
     public static function tables(): array
@@ -255,6 +264,30 @@ final class Repo
         }
         app()->db->update(self::MAPS, $row, 'id = ?', [$mapId]);
         self::touch($mapId);
+    }
+
+    /**
+     * Abschnitt „Darstellung“ speichern: nur die Optionen aus LOOK, bereinigt; alle übrigen bleiben.
+     * @param array<string, mixed> $in
+     */
+    public static function saveLook(int $mapId, array $in): void
+    {
+        $m = self::map($mapId);
+        if (!$m) return;
+        app()->db->update(self::MAPS, ['options' => json_encode(self::look($m['options'], $in))], 'id = ?', [$mapId]);
+        self::touch($mapId);
+    }
+
+    /** Optionen mit den bereinigten Werten der Darstellung (LOOK) aus $in – für Speichern und Entwurf der Vorschau */
+    public static function look(array $options, array $in): array
+    {
+        foreach (self::LOOK as $k) {
+            if (!array_key_exists($k, $in)) continue;
+            $def = self::OPTIONS[$k];
+            $v = $in[$k];
+            $options[$k] = is_bool($def) ? filter_var($v, FILTER_VALIDATE_BOOL) : (in_array($v, self::ENUMS[$k] ?? [], true) ? $v : $def);
+        }
+        return $options;
     }
 
     /** @param list<int> $ids */

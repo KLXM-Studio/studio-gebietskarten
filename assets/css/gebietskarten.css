@@ -13,6 +13,18 @@
   --gk-dim: .42;
   --gk-lab-dark: #16191d;   /* Beschriftung „dunkel“ (Labels::DARK) */
   --gk-lab-light: #fff;     /* Beschriftung „hell“ (Labels::LIGHT) */
+  /* Darstellung (seit 0.4.0) – Standardwerte, Kits steuern über diese Variablen nach; im Dunkeln setzt die erzeugte Datei
+     farben-….css kräftigere Schatten (Colors::DARK_SHADOWS) */
+  --gk-shadow: 0 4px 12px rgb(0 0 0 / .2);                 /* Schatten unter der Karte */
+  --gk-lift: 1.05;                                          /* Hover „animiert“: Anheben (Faktor) */
+  --gk-lift-shadow: 0 8px 14px rgb(0 0 0 / .3);            /* Hover „animiert“: Schatten des angehobenen Gebiets */
+  --gk-pill-bg: var(--kit-surface, var(--gk-bg));           /* Pill hell: Fläche, Schrift, feiner Rand */
+  --gk-pill-ink: var(--gk-ink);
+  --gk-pill-line: var(--kit-line, #c5ccd3);
+  --gk-pill-dark-bg: color-mix(in srgb, var(--kit-accent, #2f6f8f) 45%, #000);   /* Pill dunkel (Labels::PILL_DARK) */
+  --gk-pill-dark-ink: #fff;
+  --gk-pill-shadow: 0 1px 3px rgb(0 0 0 / .28);            /* Schatten der Pills */
+  --gk-pill-shadow-up: 0 4px 8px rgb(0 0 0 / .32);         /* … beim Anheben */
   margin: 0;
 }
 .gk-map { position: relative; }
@@ -42,6 +54,13 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
 .gk-labels .gk-lc { text-transform: uppercase; letter-spacing: .04em; }
 .gk-leader { fill: none; stroke: var(--gk-ink); stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
 .gk-anchor { fill: var(--gk-ink); stroke: var(--gk-bg); stroke-width: 1.5; pointer-events: none; }
+/* Pill (seit 0.4.0): Rechteck mit runden Ecken hinter dem Text; Gruppe skaliert auf dem Telefon um ihre Mitte */
+.gk-pill__bg { fill: var(--gk-pill-bg); stroke: var(--gk-pill-line); stroke-width: 1; pointer-events: none; }
+.gk-pill-d .gk-pill__bg { fill: var(--gk-pill-dark-bg); stroke: none; }
+.gk-labels .gk-pill text { fill: var(--gk-pill-ink); stroke: none; }
+.gk-labels .gk-pill-d text { fill: var(--gk-pill-dark-ink); }
+.gk-labels .gk-pill { transform-box: fill-box; transform-origin: center; }
+.gk--pillshadow .gk-pill__bg { filter: drop-shadow(var(--gk-pill-shadow)); }
 /* Telefon-Regel (Karten mit neuer Beschriftung): schmale Karte → Schrift im Kartenmaß 1,6-fach, Beschriftungen ohne Platz entfallen */
 .gk--lab2 .gk-map { container: gk-map / inline-size; }
 @container gk-map (max-width: 36rem) {
@@ -52,7 +71,41 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
   .gk--lab2 .gk-labels .gk-lp-m { font-size: 29px; }
   .gk--lab2 .gk-labels .gk-tone-l { stroke-width: 4px; }
   .gk--lab2 .gk-labels .gk-lh { display: none; }
+  /* Pill: Schrift bleibt im Kartenmaß, die Gruppe wird skaliert (Telefon-Größe / Größe) – so passt das Rechteck */
+  .gk--lab2 .gk-labels .gk-pill text { font-size: 18px; }
+  .gk--lab2 .gk-labels .gk-pill .gk-ls-s { font-size: 14px; }
+  .gk--lab2 .gk-labels .gk-pill .gk-ls-l { font-size: 23px; }
+  .gk--lab2 .gk-labels .gk-pz-ll { transform: scale(1.6087); }
+  .gk--lab2 .gk-labels .gk-pz-lm { transform: scale(1.2609); }
+  .gk--lab2 .gk-labels .gk-pz-ls { transform: scale(.9565); }
+  .gk--lab2 .gk-labels .gk-pz-mm { transform: scale(1.6111); }
+  .gk--lab2 .gk-labels .gk-pz-ms { transform: scale(1.2222); }
+  .gk--lab2 .gk-labels .gk-pz-ss { transform: scale(1.5714); }
 }
+
+/* Schatten unter der Karte (Darstellung) */
+.gk--shadow .gk-svg { filter: drop-shadow(var(--gk-shadow)); }
+
+/* Hover/Fokus „dezent“: übrige Gebiete abdunkeln (Maus nur auf Geräten mit Hover, Tastatur immer) */
+@media (hover: hover) {
+  .gk--hover-subtle .gk-areas:has(> .gk-area:hover) > .gk-area:not(:hover) path { fill-opacity: var(--gk-dim); }
+}
+.gk--hover-subtle .gk-areas:has(> .gk-area:focus-visible) > .gk-area:not(:focus-visible) path { fill-opacity: var(--gk-dim); }
+.gk--hover-subtle .gk-area path { transition: fill-opacity .2s ease-out, filter .15s; }
+
+/* Hover/Fokus „animiert“ (gebietskarten.js): Kopie des Gebiets samt inneren Grenzen in der Ebene gk-lift über den Flächen und
+   unter den Beschriftungen, um den Pol angehoben (transform-origin per CSSOM) – Federung beim Anheben, ruhig beim Absetzen */
+.gk--hover-lift .gk-svg { overflow: visible; }
+.gk-lift, .gk--hover-lift .gk-lk { transform-box: view-box; transform: scale(1); transition: transform .22s ease-out, filter .22s ease-out; }
+.gk-lift { pointer-events: none; }
+.gk-lift.is-up, .gk--hover-lift .gk-lk.is-up { transform: scale(var(--gk-lift)); transition: transform .45s cubic-bezier(.34, 1.56, .64, 1), filter .3s ease-out; }
+.gk-lift.is-up { filter: drop-shadow(var(--gk-lift-shadow)); }
+.gk-liftarea path { stroke: var(--gk-edge); stroke-width: 1.4; stroke-linejoin: round; }
+.gk-liftarea:not(.gk-c-own) path { fill: var(--gk-c); }
+.gk-liftarea.is-active path { stroke: var(--gk-ink); stroke-width: 2.5; }
+.gk-lift.is-focus .gk-liftarea path { stroke: var(--gk-focus); stroke-width: 4; stroke-dasharray: 8 4; }
+.gk--hover-lift.gk--pillshadow .gk-lk .gk-pill__bg { transition: filter .3s ease-out; }
+.gk--hover-lift.gk--pillshadow .gk-lk.is-up .gk-pill__bg { filter: drop-shadow(var(--gk-pill-shadow-up)); }
 
 /* Farben: Design (Kit-Vertrag) und Palette (Okabe-Ito + Indigo, Weinrot, Oliv, Grasgrün; mit dem Hintergrund gemischt –
    hell wie dunkel ruhig). Im Dunkeln setzt die erzeugte Datei farben-….css lesbare Werte (Beschriftung ≥ 4,5:1). */
@@ -73,6 +126,15 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
 .gk-c-p10 { --gk-c: color-mix(in oklab, #882255 55%, var(--kit-bg, Canvas)); }
 .gk-c-p11 { --gk-c: color-mix(in oklab, #999933 78%, var(--kit-bg, Canvas)); }
 .gk-c-p12 { --gk-c: color-mix(in oklab, #66aa33 78%, var(--kit-bg, Canvas)); }
+
+/* Preset „Töne der Akzentfarbe“ (seit 0.4.0, Colors::TONES): gemischt in sRGB mit Hintergrund bzw. Schrift des Kits –
+   im Dunkeln tauschen beide die Rollen von selbst */
+.gk-c-a1 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 14%, var(--kit-bg, Canvas)); }
+.gk-c-a2 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 32%, var(--kit-bg, Canvas)); }
+.gk-c-a3 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 55%, var(--kit-bg, Canvas)); }
+.gk-c-a4 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 96%, var(--kit-ink, CanvasText)); }
+.gk-c-a5 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 72%, var(--kit-ink, CanvasText)); }
+.gk-c-a6 { --gk-c: color-mix(in srgb, var(--kit-accent, #2f6f8f) 48%, var(--kit-ink, CanvasText)); }
 
 /* Liste der Gebiete (Legende, Alternative zur Karte) */
 .gk-cap { margin: 0; }
@@ -116,4 +178,8 @@ a.gk-area:focus-visible path { stroke: var(--gk-focus); stroke-width: 4; stroke-
 .gk-pop__close:focus-visible { outline: 2px solid var(--gk-focus); outline-offset: 1px; }
 .gk-pop__close svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
-@media (prefers-reduced-motion: reduce) { .gk-area path { transition: none; } }
+/* Bewegung reduziert: keine Animation – beim Hover „animiert“ nur statischer Schatten und Hervorhebung */
+@media (prefers-reduced-motion: reduce) {
+  .gk-area path, .gk--hover-subtle .gk-area path { transition: none; }
+  .gk-lift, .gk-lift.is-up, .gk--hover-lift .gk-lk, .gk--hover-lift .gk-lk.is-up, .gk--hover-lift.gk--pillshadow .gk-lk .gk-pill__bg { transform: none; transition: none; }
+}

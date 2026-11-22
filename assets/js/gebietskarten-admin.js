@@ -8,6 +8,9 @@
  *  - Beschriftungen (labelEditor): ziehen (Maus, Stift, Finger) oder Pfeiltasten (Umschalt = große Schritte), Text, Größe, Stil,
  *    Großbuchstaben, Hinweislinie mit eigenem Ankerpunkt, „Lage zurücksetzen“. Jede Änderung zeichnet die Karte als Entwurf neu
  *    (POST …/beschriftung, draft) – Größe „automatisch“, Ton hell/dunkel und Kontrast rechnet der Server wie auf der Website.
+ *  - Darstellung (lookEditor, seit 0.4.0): Hover-Effekt, Schatten, automatische Farben, Stil der Beschriftungen – jede Änderung
+ *    zeichnet die Vorschau sofort als Entwurf neu (POST …/darstellung, draft); den Hover-Effekt zeigt die Vorschau beim Überfahren
+ *    (Skript der Website). Nach dem Speichern zeichnet der Beschriftungs-Editor seine Karte mit seinem Entwurf neu.
  */
 (() => {
   const data = (() => { try { return JSON.parse(document.getElementById('gk-ed-data')?.textContent || 'null'); } catch { return null; } })();
@@ -38,6 +41,7 @@
   const setPreview = html => { if (preview && html) preview.innerHTML = html; };
 
   labelEditor(post);
+  lookEditor(post);
 
   if (!data) return;
   const regions = new Map(data.regions.map(r => [String(r.id), r]));
@@ -302,7 +306,7 @@
       if (!r.has || !i) { infoEl.replaceChildren(Object.assign(document.createElement('p'), { textContent: tl('noArea') })); return; }
       const line = (text, warn) => { const p = document.createElement('p'); if (warn) p.className = 'gk-lab-warn'; p.textContent = text; out.push(p); };
       if (!i.visible) line(tl('off'));
-      const tone = k => ({ d: tl('toneD'), l: tl('toneL'), kit: tl('toneKit'), tag: tl('toneTag') }[k] || k);
+      const tone = k => ({ d: tl('toneD'), l: tl('toneL'), kit: tl('toneKit'), tag: tl('toneTag'), pl: tl('tonePillL'), pd: tl('tonePillD') }[k] || k);
       line(tl('size', { size: i.size.toUpperCase() }) + ' · ' + tl('tone', { tone: tone(i.toneL) + (i.toneD !== i.toneL ? ' / ' + tone(i.toneD) : '') }));
       if (i.cL != null) line(tl('contrastL', { ratio: fmt(i.cL) }) + (i.cL < 4.5 ? ' – ' + tl('low') : ''), i.cL < 4.5);
       if (i.cD != null) line(tl('contrastD', { ratio: fmt(i.cD) }) + (i.cD < 4.5 ? ' – ' + tl('low') : ''), i.cD < 4.5);
@@ -475,6 +479,58 @@
       }
     });
     window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = tl('leave'); } });
+    // Darstellung gespeichert: Karte mit dem eigenen Entwurf (Lage, Texte) und der neuen Darstellung neu zeichnen
+    document.addEventListener('gk:look-saved', () => draft(0));
     fill();
+  }
+
+  // ---------------------------------------------------------------- Darstellung
+  function lookEditor(post) {
+    const ld = (() => { try { return JSON.parse(document.getElementById('gk-look-data')?.textContent || 'null'); } catch { return null; } })();
+    const panel = document.querySelector('[data-gk-look]');
+    const pv = document.querySelector('#gk-darstellung [data-gk-preview]');
+    if (!ld || !panel || !pv) return;
+    const tk = k => (ld.t || {})[k] || k;
+    const saveBtn = panel.querySelector('[data-gk-look-save]');
+    const status = panel.querySelector('[data-gk-look-status]');
+    let dirty = false, seq = 0, timer = null;
+    const values = () => {
+      const o = {};
+      panel.querySelectorAll('[data-gk-look-f]').forEach(el => { o[el.dataset.gkLookF] = el.type === 'checkbox' ? el.checked : el.value; });
+      return o;
+    };
+    const show = html => { if (html) pv.innerHTML = html; };
+    panel.addEventListener('change', e => {
+      if (!e.target.closest('[data-gk-look-f]')) return;
+      dirty = true;
+      saveBtn.disabled = false;
+      if (status) status.textContent = tk('unsaved');
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const mine = ++seq;
+        try {
+          const json = await post(ld.save, { options: values(), draft: true });
+          if (mine === seq) show(json.preview);
+        } catch { /* nächste Änderung versucht es erneut */ }
+      }, 60);
+    });
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      clearTimeout(timer);
+      seq++;
+      if (status) status.textContent = tk('saving');
+      try {
+        const json = await post(ld.save, { options: values() });
+        if (!json.ok) throw new Error(json.message || '');
+        show(json.preview);
+        dirty = false;
+        if (status) status.textContent = json.message || tk('saved');
+        document.dispatchEvent(new CustomEvent('gk:look-saved'));
+      } catch (err) {
+        saveBtn.disabled = false;
+        if (status) status.textContent = err && err.message && err.message.length > 3 ? err.message : tk('error');
+      }
+    });
+    window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = tk('leave'); } });
   }
 })();

@@ -1,9 +1,73 @@
 /*
- * Gebietskarten – Info-Fenster auf der Website (nur bei „Klick auf ein Gebiet: Info-Fenster zeigen“, lädt sonst nicht).
- * Ohne Skript springen die Gebiete zur Karte in der Liste (#gk-…); mit Skript erscheint dieselbe Karte als Fenster an der
- * Stelle des Klicks. Tastatur: Enter öffnet, Esc schließt, der Fokus kehrt zum Gebiet zurück. Position per CSSOM (CSP).
+ * Gebietskarten – Website (lädt nur bei Bedarf):
+ *  - Info-Fenster (bei „Klick auf ein Gebiet: Info-Fenster zeigen“). Ohne Skript springen die Gebiete zur Karte in der Liste
+ *    (#gk-…); mit Skript erscheint dieselbe Karte als Fenster an der Stelle des Klicks. Tastatur: Enter öffnet, Esc schließt,
+ *    der Fokus kehrt zum Gebiet zurück. Position per CSSOM (CSP).
+ *  - Hover-Effekt „animiert“ (Karten mit gk--hover-lift, seit 0.4.0): Kopie des Gebiets samt inneren Grenzen in eine Ebene über
+ *    den Flächen und unter den Beschriftungen, um den Pol (data-gk-pole) angehoben – Federung, Schatten und Bewegung macht CSS;
+ *    die Beschriftung (gk-lk) geht mit. Maus/Stift und Tastaturfokus (:focus-visible), nicht bei Berührung. Nur Klassen und
+ *    CSSOM (transform-origin), keine style-Attribute. Ereignisse am Dokument – gilt auch für nachgeladene Vorschauen.
  */
 (() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const AREA = '.gk--hover-lift .gk-area[data-gk-pole]';
+  const lifted = new Map();      // svg → { key, layer, lab }
+  let clips = 0;
+  const down = (svg, key) => {
+    const st = lifted.get(svg);
+    if (!st || (key && st.key !== key)) return;
+    lifted.delete(svg);
+    st.layer.classList.remove('is-up');
+    st.lab?.classList.remove('is-up');
+    setTimeout(() => st.layer.remove(), 320);
+  };
+  const up = (area, focus) => {
+    const svg = area.ownerSVGElement;
+    const key = area.dataset.gkK;
+    const src = area.querySelector('path');
+    const [x, y] = String(area.dataset.gkPole).split(' ').map(Number);
+    if (!svg || !src || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    const st = lifted.get(svg);
+    if (st && st.key === key) { st.layer.classList.toggle('is-focus', !!focus); return; }
+    down(svg);
+    const origin = `${x}px ${y}px`;
+    const layer = document.createElementNS(NS, 'g');
+    layer.setAttribute('class', 'gk-lift' + (focus ? ' is-focus' : ''));
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.setProperty('transform-origin', origin);
+    const shape = document.createElementNS(NS, 'g');
+    shape.setAttribute('class', area.getAttribute('class').replace(/\bgk-area\b/, 'gk-liftarea').replace(/\bis-open\b/, ''));
+    const dark = area.style.getPropertyValue('--gk-d');     // Vorschau der Verwaltung
+    if (dark) shape.style.setProperty('--gk-d', dark);
+    shape.append(src.cloneNode(false));
+    layer.append(shape);
+    // innere Grenzen: Linien der Karte, auf das Gebiet beschnitten
+    const lines = svg.querySelector(':scope > .gk-lines');
+    if (lines) {
+      const clip = document.createElementNS(NS, 'clipPath');
+      clip.id = `${svg.closest('.gk')?.id || 'gk'}-lift${++clips}`;
+      clip.append(src.cloneNode(false));
+      const l = lines.cloneNode(false);
+      l.setAttribute('clip-path', `url(#${clip.id})`);
+      layer.append(clip, l);
+    }
+    svg.insertBefore(layer, svg.querySelector(':scope > .gk-labels'));
+    const lab = svg.querySelector(`.gk-lk[data-gk-k="${CSS.escape(key)}"]`);
+    lab?.style.setProperty('transform-origin', origin);
+    lifted.set(svg, { key, layer, lab });
+    layer.getBoundingClientRect();
+    requestAnimationFrame(() => { if (lifted.get(svg)?.layer === layer) { layer.classList.add('is-up'); lab?.classList.add('is-up'); } });
+  };
+  const areaOf = t => (t instanceof Element ? t.closest(AREA) : null);
+  document.addEventListener('pointerover', e => { if (e.pointerType !== 'touch') { const a = areaOf(e.target); if (a) up(a, false); } });
+  document.addEventListener('pointerout', e => {
+    const a = areaOf(e.target);
+    if (!a || a.contains(e.relatedTarget) || (a === document.activeElement && a.matches(':focus-visible'))) return;
+    down(a.ownerSVGElement, a.dataset.gkK);
+  });
+  document.addEventListener('focusin', e => { const a = areaOf(e.target); if (a && a.matches(':focus-visible')) up(a, true); });
+  document.addEventListener('focusout', e => { const a = areaOf(e.target); if (a) down(a.ownerSVGElement, a.dataset.gkK); });
+
   const init = fig => {
     if (fig.dataset.gkReady) return;
     fig.dataset.gkReady = '1';

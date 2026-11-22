@@ -28,7 +28,7 @@ use Klxm\Gebietskarten\Repo;
 return [
     'name' => 'gebietskarten',
     'label' => 'Gebietskarten – Regionen, Kreise und Vertriebsgebiete auf freien Karten',
-    'version' => '0.3.0',
+    'version' => '0.4.0',
     'requires' => '>=1.0.0',
     'description' => 'Flächen einer Kartengrundlage (Deutschland: Länder, Kreise, Gemeinden – BKG VG250) zu Gebieten zusammenfassen, je Gebiet Infos pflegen und als zugängliche Karte ausgeben. Gebiete auch aus einer Datentabelle.',
     'author' => 'KLXM Crossmedia GmbH and contributors',
@@ -74,7 +74,8 @@ return [
 
         $x->adminPage(['href' => G::ADMIN, 'label' => 'Gebietskarten', 'kind' => 'content', 'icon' => 'map-trifold', 'perm' => G::PERM,
             'feature' => G::FEATURE, 'description' => 'Gebiete auf Karten: Regionalgruppen, Kreise, Vertriebsgebiete']);
-        $x->adminAssets(fn(string $view): array => $view === G::NAME . '/edit' ? ['js/gebietskarten-admin.js'] : []);
+        // Editor: dazu das Skript der Website (Hover „animiert“ in der Vorschau)
+        $x->adminAssets(fn(string $view): array => $view === G::NAME . '/edit' ? ['js/gebietskarten.js', 'js/gebietskarten-admin.js'] : []);
 
         $x->docs('manual', ['gebietskarten' => ['id' => 'gebietskarten', 'title' => 'Gebietskarten', 'after' => 'medien', 'file' => G::dir() . '/docs/manual.php']]);
         $x->docs('technical', ['gebietskarten' => ['title' => 'Gebietskarten (Erweiterung)', 'part' => 2, 'after' => 'medien', 'file' => G::dir() . '/docs/technical.php']]);
@@ -106,6 +107,7 @@ return [
             $r->post(G::ADMIN . '/{id}/reihenfolge', [$c, 'reorder'], $p);
             $r->post(G::ADMIN . '/{id}/beschriftung', [$c, 'labels'], $p);
             $r->post(G::ADMIN . '/{id}/beschriftung/automatisch', [$c, 'labelsAuto'], $p);
+            $r->post(G::ADMIN . '/{id}/darstellung', [$c, 'look'], $p);
             $r->post(G::ADMIN . '/{id}/loeschen', [$c, 'delete'], $p);
             $r->get(G::ADMIN . '/{id}/vorschau', [$c, 'preview'], $p);
             $r->post(G::ADMIN . '/{id}/grafik', [$c, 'toGraphic'], $p);
@@ -113,7 +115,7 @@ return [
 
         $x->command('gebietskarten:daten', 'Gebietskarten: Kartendaten der Gemeinden je Land nachladen (--land=05,06, --from=URL|Ordner, --list, --remove)',
             fn(array $args): int => Klxm\Gebietskarten\DataPacks::console($args));
-        $x->command('gebietskarten:selftest', 'Gebietskarten: Verschmelzen, Zuordnung (auch in Einträge), Reihenfolge, Farben im Dunkeln, Beschriftungen, Ausgabe (CSP, Zugänglichkeit), Quellenvermerk',
+        $x->command('gebietskarten:selftest', 'Gebietskarten: Verschmelzen, Zuordnung (auch in Einträge), Reihenfolge, Farben im Dunkeln, Beschriftungen, Darstellung, Ausgabe (CSP, Zugänglichkeit), Quellenvermerk',
             fn(array $args): int => Klxm\Gebietskarten\SelfTest::run());
     },
 ];

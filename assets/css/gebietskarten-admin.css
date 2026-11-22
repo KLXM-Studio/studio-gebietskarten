@@ -89,8 +89,6 @@ html.adm-ui[data-theme="dark"] .gk-u.is-free, html.adm-ui[data-theme="dark"] .gk
 .gk-lab-autoform { margin-top: .5rem; }
 .gk-lab-legacy { margin: .5rem 0; }
 .gk-lab-legacy p { margin: 0; }
-.gk-adm-labels { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); align-items: end; }
-.gk-adm-labels legend { grid-column: 1 / -1; }
 
 /* Karte im Bearbeiten-Modus: Beschriftungen greifbar, Fokus und Auswahl sichtbar */
 .gk--labedit .gk-labels { pointer-events: auto; }
@@ -108,3 +106,18 @@ html.adm-ui[data-theme="dark"] .gk-u.is-free, html.adm-ui[data-theme="dark"] .gk
 .gk-anchor-h { fill: transparent; stroke: var(--adm-accent, #2f6f8f); stroke-width: 1.6; stroke-dasharray: 3 2; cursor: move; outline: none; touch-action: none; }
 .gk-anchor-h:focus-visible { stroke-width: 3; stroke-dasharray: none; fill: color-mix(in srgb, var(--adm-accent, #2f6f8f) 20%, transparent); }
 .gk--labedit .gk-area { cursor: pointer; }
+
+/* Darstellung (seit 0.4.0): Vorschau links, Einstellungen rechts */
+.gk-look { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); align-items: start; margin-top: .5rem; }
+@media (min-width: 70rem) { .gk-look { grid-template-columns: minmax(0, 1fr) 20rem; } }
+.gk-look .gk-prevbox { margin-top: 0; }
+.gk-look__panel { display: grid; gap: .7rem; }
+.gk-look__panel .f { margin: 0; }
+.gk-look__labels { display: grid; gap: .6rem; border: 0; border-top: 1px solid var(--adm-line); padding: .6rem 0 0; margin: 0; }
+.gk-look__labels legend { font-weight: 600; padding: 0 .3rem 0 0; }
+.gk-look__panel .gk-lab-save { margin-top: .25rem; }
+/* Vorschau „Dunkel“: Schatten wie die erzeugte Datei im Dunkeln (Colors::DARK_SHADOWS) */
+.gk-prevbox[data-scheme="dark"] .gk { --gk-shadow:0 6px 16px rgb(0 0 0 / .6);--gk-pill-shadow:0 1.5px 4px rgb(0 0 0 / .7);--gk-pill-shadow-up:0 5px 10px rgb(0 0 0 / .75);--gk-lift-shadow:0 10px 18px rgb(0 0 0 / .7); }
+/* Vorschau „Dunkel“: Kopie beim Hover „animiert“ mit dem Dunkel-Wert eigener Farben bzw. der Palette */
+.gk-prevbox[data-scheme="dark"] .gk-liftarea.gk-c-own[style] path { fill: var(--gk-d); }
+.gk-prevbox[data-scheme="dark"] .gk-liftarea[style]:not(.gk-c-own) { --gk-c: var(--gk-d); }
